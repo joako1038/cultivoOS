@@ -27,3 +27,7 @@ return new class extends Migration
         Schema::dropIfExists('tipo_salas');
     }
 };
+//falta migrar
+// usuarios_org
+// time
+//refistos

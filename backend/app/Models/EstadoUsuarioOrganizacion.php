@@ -3,8 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 class EstadoUsuarioOrganizacion extends Model
 {
-    //
+   use HasFactory, HasUuids;
+
+    protected $table = 'estado_usuario_organizacions';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+    ];
+
+      public function usuariosOrganizaciones()
+{
+    return $this->hasMany(UsuarioOrganizacion::class);
+}
 }
