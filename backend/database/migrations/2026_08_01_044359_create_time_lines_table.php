@@ -12,8 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('time_lines', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
+            $table->string('nombre',100);
+            $table->timestamp('fecha_prevista_fin');
+            $table->timestamp('fecha_real_fin');
+            $table->timestamp('fecha_inicio');
             $table->timestamps();
+            $table->foreignUuid('cultivo_id')
+                ->constrained('cultivos');
         });
     }
 

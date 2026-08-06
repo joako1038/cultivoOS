@@ -12,9 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('usuario_organizacions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
+            $table->boolean('es_propietario')->default(false);
             $table->timestamps();
-        });
+            $table->uuid('invitado_por');
+
+            $table->foreignUuid('organizacion_id')
+                ->constrained('organizacions');
+            $table->foreignUuid('usuario_id')
+                ->constrained('usuarios');
+            $table->foreignUuid('rol_id')
+                ->constrained('rols');
+            $table->foreignUuid('estado_usuario_organizacion_id')
+                ->constrained('estado_usuario_organizacions');
+                });
     }
 
     /**

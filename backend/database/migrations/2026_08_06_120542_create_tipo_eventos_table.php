@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('estado_salas', function (Blueprint $table) {
-              $table->uuid('id')->primary();
+        Schema::create('tipo_eventos', function (Blueprint $table) {
+             $table->uuid('id')->primary();
             $table->string('nombre',100);
              $table->text('descripcion')->nullable();
             $table->timestamps();
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('estado_salas');
+        Schema::dropIfExists('tipo_eventos');
     }
 };

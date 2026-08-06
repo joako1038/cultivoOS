@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('prioridad_planificacions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
+            $table->string('nombre',100);
+             $table->text('descripcion')->nullable();
             $table->timestamps();
         });
     }

@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('fase_cultivos', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
+            $table->string('nombre',100);
+            $table->text('descripcion')->nullable();
+            
             $table->timestamps();
         });
     }
@@ -22,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fase_cultivos');
+        Schema::dropIfExists('fase_Cultivos');
     }
 };

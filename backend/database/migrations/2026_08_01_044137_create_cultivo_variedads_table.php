@@ -12,8 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('cultivo_variedads', function (Blueprint $table) {
-            $table->id();
+           $table->uuid('id')->primary();
+            $table->decimal('cantidad_pantas',8,2);
+            $table->timestamp('fecha_inicio');
             $table->timestamps();
+            $table->foreignUuid('catalogo_variedad_id')
+                ->constrained('catalogo_variedads');
+
         });
     }
 

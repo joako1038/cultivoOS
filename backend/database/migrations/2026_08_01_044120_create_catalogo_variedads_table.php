@@ -12,8 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('catalogo_variedads', function (Blueprint $table) {
-            $table->id();
+             $table->uuid('id')->primary();
+            $table->string('nombre',100);
+            
+             $table->string('banco',100);
+             $table->text('descripcion')->nullable();
+             $table->decimal('dias_ciclo', 8, 2);
             $table->timestamps();
+
+            //relaciones
+            // Relaciones
+            $table->foreignUuid('tipo_variedad_id')
+                ->constrained('tipo_variedads');
         });
     }
 
