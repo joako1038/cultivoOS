@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class tipoEvento extends Model
 {
+    use HasFactory, HasUuids;
+
+    protected $table = 'tipo_evento';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+    ];
      
     public function eventos()
     {

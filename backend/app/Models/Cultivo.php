@@ -51,4 +51,8 @@ class Cultivo extends Model
     {
         return $this->hasMany(Registro::class);
     }
+    public function timeLines()
+{
+    return $this->hasMany(TimeLine::class);
+}
 }
