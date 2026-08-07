@@ -39,7 +39,7 @@ class Cultivo extends Model
     }
 
     public function usuarioResponsable(){
-        return $this->belongsTO(Usuario::class,'usuario_responsable_id');
+        return $this->belongsTO(User::class,'usuario_responsable_id');
     }
      
     public function eventos()

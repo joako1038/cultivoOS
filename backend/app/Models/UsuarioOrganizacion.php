@@ -31,9 +31,9 @@ class UsuarioOrganizacion extends Model
     /**
      * Usuario asociado
      */
-    public function usuario()
+    public function user()
     {
-        return $this->belongsTo(Usuario::class);
+        return $this->belongsTo(User::class);
     }
 
 

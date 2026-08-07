@@ -37,7 +37,7 @@ class Evento extends Model
         return $this->belongsTo(TipoEvento::Class);
     }    
     public function usuario(){
-        return $this->belongsTo(Usuario::Class);
+        return $this->belongsTo(User::Class,'usuario_id');
     }  
 
      public function timeLine(){

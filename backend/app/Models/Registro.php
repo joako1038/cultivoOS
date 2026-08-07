@@ -54,8 +54,8 @@ class Registro extends Model
     /**
      * Usuario que creó el registro
      */
-    public function usuario()
+    public function user()
     {
-        return $this->belongsTo(Usuario::class);
+        return $this->belongsTo(User::class,'usuario_id');
     }
 }
