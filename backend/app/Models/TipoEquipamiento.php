@@ -3,22 +3,25 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-class TipoSala extends Model
+
+class TipoEquipamiento extends Model
 {
+    use HasFactory, HasUuids;
 
-use HasFactory, HasUuids;
-
-    protected $table = 'tipo_salas';
+    protected $table = 'tipo_equipamientos';
 
     protected $fillable = [
         'nombre',
         'descripcion',
     ];
-      public function salas()
+
+    public function equipamientos()
     {
-        return $this->hasMany(Sala::class);
+        return $this->hasMany(
+            Equipamiento::class,
+            'tipo_equipamiento_id'
+        );
     }
 }

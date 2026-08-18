@@ -24,6 +24,6 @@ class Organizacion extends Model
 
     public function usuarios()
 {
-    return $this->hasMany(UsuarioOrganizacion::class);
+    return $this->hasMany(UsuarioOrganizacion::class,'organizacion_id');
 }
 }

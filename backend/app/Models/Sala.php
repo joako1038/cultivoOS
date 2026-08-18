@@ -74,5 +74,12 @@ class Sala extends Model
     {
         return $this->hasMany(Cultivo::class);
     }
+     public function equipamientos()
+    {
+    return $this->hasMany(
+        Equipamiento::class,
+        'sala_id'
+    );
+    }
 }
 

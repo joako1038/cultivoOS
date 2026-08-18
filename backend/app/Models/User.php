@@ -48,7 +48,7 @@ class User extends Authenticatable
 
     public function organizaciones()
 {
-    return $this->hasMany(UsuarioOrganizacion::class);
+    return $this->hasMany(UsuarioOrganizacion::class,'usuario_id');
 }
 
 }
