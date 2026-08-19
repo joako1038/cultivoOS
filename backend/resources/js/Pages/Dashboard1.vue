@@ -1,612 +1,637 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Head, Link, useForm } from '@inertiajs/vue3'
+import { Head, Link, useForm, router } from '@inertiajs/vue3'
+import { MOCK_DASHBOARD_PROPS } from '@/mocks/mockData'
 
-// =========================================================================
-// TIPOS E INTERFACES (Compatibles con Laravel Eloquent Models)
-// =========================================================================
-export interface Sala {
-    id: string
-    nombre: string
-    codigo: string
-    tipo: 'VEGETACION' | 'FLORACION' | 'SECADO' | 'MADRES_Y_ESQUEJES' | 'MULTIPROPOSITO'
-    estado: 'ACTIVA' | 'MANTENIMIENTO' | 'LIMPIEZA' | 'INACTIVA'
-    ancho_m: number
-    largo_m: number
-    alto_m: number
-    volumen_m3: number
-    capacidad_macetas: number
-    potencia_luces_w: number
-    temperatura_c: number
-    humedad_pct: number
-    vpd_kpa: number
-    co2_ppm: number
-    cultivo_activo_id?: string | null
-}
-
-export interface Cultivo {
-    id: string
-    codigo: string
-    nombre_lote: string
-    sala_id: string
-    sala_nombre: string
-    variedad_id: string
-    variedad_nombre: string
-    banco: string
-    tipo_categoria: 'SATIVA' | 'INDICA' | 'HIBRIDA' | 'AUTOMATICA' | 'CBD'
-    etapa: 'VEGETATIVO' | 'FLORACION' | 'SECADO' | 'CURADO'
-    salud: 'OPTIMO' | 'ATENCION' | 'CRITICO'
-    dia_actual: number
-    dias_totales_estimados: number
-    semana_actual: number
-    plantas_totales: number
-    fotoperiodo: string
-    notas?: string
-}
-
-export interface ActualizacionBitacora {
-    id: string
-    cultivo_id: string
-    cultivo_lote: string
-    sala_nombre: string
-    fecha_hora: string
-    tipo: 'RIEGO' | 'PODA' | 'CLIMA' | 'NUTRICION' | 'PREVENTIVO' | 'TRANSPLANTE' | 'COSECHA' | 'OBSERVACION'
-    titulo: string
-    descripcion: string
-    ec?: number | null
-    ph?: number | null
-    temp_c?: number | null
-    hum_pct?: number | null
-    autor: string
-}
-
-export interface TareaPendiente {
-    id: string
-    titulo: string
-    descripcion?: string
-    categoria: 'RIEGO' | 'NUTRICION' | 'MANTENIMIENTO' | 'SANIDAD' | 'CALIBRACION' | 'COSECHA'
-    prioridad: 'ALTA' | 'MEDIA' | 'BAJA'
-    fecha_limite: string
-    completada: boolean
-    sala_nombre?: string
-    cultivo_codigo?: string
-    asignado_a?: string
-}
-
-// =========================================================================
-// PROPS ENVIADAS DESDE EL CONTROLADOR LARAVEL (Inertia::render('Dashboard', [...]))
-// =========================================================================
-const props = withDefaults(
-    defineProps<{
-        salas?: Sala[]
-        cultivos?: Cultivo[]
-        bitacoras?: ActualizacionBitacora[]
-        tareas?: TareaPendiente[]
-        totalVariedades?: number
-    }>(),
-    {
-        salas: () => [],
-        cultivos: () => [],
-        bitacoras: () => [],
-        tareas: () => [],
-        totalVariedades: 12,
+interface Props {
+  salas?: Array<any>
+  cultivos?: Array<any>
+  registros?: Array<any>
+  planificaciones?: Array<any>
+  eventos?: Array<any>
+  totalVariedades?: number
+  auth?: {
+    user?: {
+      id?: string
+      name?: string
+      email?: string
+      role?: string
     }
-)
+  }
+}
 
-// =========================================================================
-// ESTADOS LOCALES Y FILTROS DEL DASHBOARD
-// =========================================================================
-const filtroEtapaCultivo = ref<'TODOS' | 'VEGETATIVO' | 'FLORACION' | 'SECADO'>('TODOS')
-const filtroTareas = ref<'TODAS' | 'PENDIENTES' | 'COMPLETADAS' | 'ALTA_PRIORIDAD'>('PENDIENTES')
-const modalBitacoraAbierto = ref(false)
-const modalTareaAbierto = ref(false)
-const cultivoSeleccionadoParaBitacora = ref<Cultivo | null>(null)
+const useMockIfEmpty = <T>(value: T[] | undefined, mock: T[]): T[] => {
+  return value && value.length > 0 ? value : mock
+}
 
-// Lista reactiva de tareas locales (para toggle inmediato)
-const listaTareas = ref<TareaPendiente[]>([...props.tareas])
-const listaBitacoras = ref<ActualizacionBitacora[]>([...props.bitacoras])
+const inertiaProps = defineProps<Props>()
 
-// Formulario rápido de Bitácora
-const formBitacora = useForm({
-    cultivo_id: '',
-    tipo: 'RIEGO' as ActualizacionBitacora['tipo'],
-    titulo: '',
-    descripcion: '',
-    ec: null as number | null,
-    ph: null as number | null,
+const data = {
+  salas: useMockIfEmpty(inertiaProps.salas, MOCK_DASHBOARD_PROPS.salas),
+  cultivos: useMockIfEmpty(inertiaProps.cultivos, MOCK_DASHBOARD_PROPS.cultivos),
+  planificaciones: useMockIfEmpty(inertiaProps.planificaciones, MOCK_DASHBOARD_PROPS.planificaciones),
+  eventos: useMockIfEmpty(inertiaProps.eventos, MOCK_DASHBOARD_PROPS.eventos),
+  registros: useMockIfEmpty(inertiaProps.registros, MOCK_DASHBOARD_PROPS.registros),
+  totalVariedades: inertiaProps.totalVariedades ?? MOCK_DASHBOARD_PROPS.totalVariedades,
+  user: inertiaProps.auth?.user || {
+    id: 'usr-001',
+    name: 'Ing. Juan Pérez',
+    email: 'operador@cultivoos.internal',
+    role: 'Director de Cultivo & Agrónomo',
+  },
+}
+
+// Estados locales de interfaz
+const menuPerfilAbierto = ref(false)
+const estaAutenticado = ref(true) // Toggle interactivo para modo usuario vs invitado
+const filtroEventos = ref<'TODOS' | 'PENDIENTES' | 'PLANIFICADOS' | 'INDEPENDIENTES' | 'REALIZADOS'>('PENDIENTES')
+const filtroCultivoRegistro = ref<string>('TODOS')
+const filtroEtapaCultivo = ref<string>('TODOS')
+const filtroTipoSala = ref<string>('TODOS')
+
+// Modales
+const modalEventoAbierto = ref(false)
+const modalRegistroAbierto = ref(false)
+const modalDetalleSala = ref<any | null>(null)
+const modalDetalleCultivo = ref<any | null>(null)
+
+// Formulario de Registro Diario (App\\Models\\Registro)
+const formRegistro = useForm({
+  nombre: 'Registro de Telemetría y Clima Diaria',
+  fecha_registro: new Date().toISOString().slice(0, 16),
+  descripcion: '',
+  cultivo_id: data.cultivos[0]?.id || '',
+  temperatura: 24.5,
+  humedad: 50.0,
+  vpd: 1.25,
+  co2: 1100.0,
+  temperatura_solucion: 20.5,
+  temperatura_sustrato: 21.5,
+  flujo_hora_intraccion: 450.0,
+  flujo_hora_extracion: 600.0,
 })
 
-// Formulario rápido de Tarea
-const formTarea = useForm({
-    titulo: '',
-    categoria: 'RIEGO' as TareaPendiente['categoria'],
-    prioridad: 'ALTA' as TareaPendiente['prioridad'],
-    fecha_limite: 'Hoy',
-    sala_nombre: '',
+// Formulario de Evento (App\\Models\\Evento)
+const formEvento = useForm({
+  nombre: '',
+  descripcion: '',
+  fecha_inicio_planificacion: new Date().toISOString().split('T')[0],
+  fecha_fin_planificacion: new Date().toISOString().split('T')[0],
+  tipo_evento_id: '',
+  estado_evento_id: '',
+  cultivo_id: data.cultivos[0]?.id || '',
+  time_line_id: '',
+  es_asociado_plan: true,
 })
 
-// =========================================================================
-// COMPUTED / MÉTRICAS
-// =========================================================================
-const salasActivas = computed(() => props.salas.filter((s) => s.estado === 'ACTIVA').length)
-const totalPlantas = computed(() => props.cultivos.reduce((acc, c) => acc + (c.plantas_totales || 0), 0))
-const potenciaTotalKw = computed(() => (props.salas.reduce((acc, s) => acc + (s.potencia_luces_w || 0), 0) / 1000).toFixed(1))
-const tareasPendientesCount = computed(() => listaTareas.value.filter((t) => !t.completada).length)
+// Métricas computadas
+const totalPlantas = computed(() => {
+  return data.cultivos.reduce((acc, c) => acc + (c.plantas_totales || 0), 0)
+})
+
+const totalWatts = computed(() => {
+  return data.salas.reduce((acc, s) => acc + (s.potencia_luces_w || 0), 0)
+})
+
+const salasFiltradas = computed(() => {
+  if (filtroTipoSala.value === 'TODOS') return data.salas
+  return data.salas.filter((s) => s.tipo === filtroTipoSala.value)
+})
 
 const cultivosFiltrados = computed(() => {
-    if (filtroEtapaCultivo.value === 'TODOS') return props.cultivos
-    return props.cultivos.filter((c) => c.etapa === filtroEtapaCultivo.value)
+  if (filtroEtapaCultivo.value === 'TODOS') return data.cultivos
+  return data.cultivos.filter((c) => c.etapa === filtroEtapaCultivo.value)
 })
 
-const tareasFiltradas = computed(() => {
-    if (filtroTareas.value === 'PENDIENTES') return listaTareas.value.filter((t) => !t.completada)
-    if (filtroTareas.value === 'COMPLETADAS') return listaTareas.value.filter((t) => t.completada)
-    if (filtroTareas.value === 'ALTA_PRIORIDAD') return listaTareas.value.filter((t) => t.prioridad === 'ALTA' && !t.completada)
-    return listaTareas.value
+const eventosFiltrados = computed(() => {
+  return data.eventos.filter((e) => {
+    const estado = e.estado_evento?.nombre || ''
+    if (filtroEventos.value === 'PENDIENTES') return estado === 'PENDIENTE' || estado === 'EN_EJECUCION'
+    if (filtroEventos.value === 'REALIZADOS') return estado === 'REALIZADO'
+    if (filtroEventos.value === 'PLANIFICADOS') return Boolean(e.time_line_id)
+    if (filtroEventos.value === 'INDEPENDIENTES') return !e.time_line_id
+    return true
+  })
 })
 
-// =========================================================================
-// MÉTODOS Y ACCIONES
-// =========================================================================
-function toggleTarea(tareaId: string) {
-    const tar = listaTareas.value.find((t) => t.id === tareaId)
-    if (tar) {
-        tar.completada = !tar.completada
-    }
+const registrosFiltrados = computed(() => {
+  if (filtroCultivoRegistro.value === 'TODOS') return data.registros
+  return data.registros.filter((r) => r.cultivo?.id === filtroCultivoRegistro.value)
+})
+
+function toggleEstadoEvento(eventoId: string) {
+  // En Laravel con Inertia: router.patch(route('eventos.toggle', eventoId), {}, { preserveScroll: true })
+  const evt = data.eventos.find((e: any) => e.id === eventoId)
+  if (evt) {
+    evt.estado_evento = evt.estado_evento?.nombre === 'REALIZADO' ? { nombre: 'PENDIENTE' } : { nombre: 'REALIZADO' }
+  }
 }
 
-function abrirModalBitacora(cultivo?: Cultivo) {
-    if (cultivo) {
-        cultivoSeleccionadoParaBitacora.value = cultivo
-        formBitacora.cultivo_id = cultivo.id
-    } else if (props.cultivos.length > 0) {
-        cultivoSeleccionadoParaBitacora.value = props.cultivos[0]
-        formBitacora.cultivo_id = props.cultivos[0].id
-    }
-    modalBitacoraAbierto.value = true
+function guardarRegistro() {
+  formRegistro.post(route('registros.store'), {
+    onSuccess: () => {
+      modalRegistroAbierto.value = false
+      formRegistro.reset()
+    },
+  })
 }
 
-function guardarBitacora() {
-    if (!formBitacora.titulo.trim() || !formBitacora.cultivo_id) return
-
-    const cultivo = props.cultivos.find((c) => c.id === formBitacora.cultivo_id)
-    const nuevoRegistro: ActualizacionBitacora = {
-        id: 'bit-' + Date.now(),
-        cultivo_id: formBitacora.cultivo_id,
-        cultivo_lote: cultivo ? cultivo.nombre_lote : 'Lote General',
-        sala_nombre: cultivo ? cultivo.sala_nombre : 'Sala General',
-        fecha_hora: 'Hace un momento',
-        tipo: formBitacora.tipo,
-        titulo: formBitacora.titulo.trim(),
-        descripcion: formBitacora.descripcion.trim(),
-        ec: formBitacora.ec,
-        ph: formBitacora.ph,
-        autor: 'Operador Principal',
-    }
-
-    listaBitacoras.value.unshift(nuevoRegistro)
-    modalBitacoraAbierto.value = false
-    formBitacora.reset()
+function guardarEvento() {
+  formEvento.post(route('eventos.store'), {
+    onSuccess: () => {
+      modalEventoAbierto.value = false
+      formEvento.reset()
+    },
+  })
 }
 
-function guardarTarea() {
-    if (!formTarea.titulo.trim()) return
-
-    const nueva: TareaPendiente = {
-        id: 'tar-' + Date.now(),
-        titulo: formTarea.titulo.trim(),
-        categoria: formTarea.categoria,
-        prioridad: formTarea.prioridad,
-        fecha_limite: formTarea.fecha_limite || 'Hoy',
-        completada: false,
-        sala_nombre: formTarea.sala_nombre || 'General',
-    }
-
-    listaTareas.value.unshift(nueva)
-    modalTareaAbierto.value = false
-    formTarea.reset()
+function cerrarSesion() {
+  menuPerfilAbierto.value = false
+  // En Laravel Breeze / Fortify: router.post(route('logout'))
+  estaAutenticado.value = false
 }
 </script>
 
 <template>
-    <Head title="Dashboard Principal - CultivoOS" />
+  <Head title="Dashboard de Control - CultivoOS" />
 
-    <div class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-500 selection:text-white flex flex-col justify-between">
+  <div class="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+    
+    <!-- ================================================================= -->
+    <!-- TOPBAR CON NAVEGACIÓN Y MENÚ DE USUARIO / LOGIN & PERFIL          -->
+    <!-- ================================================================= -->
+    <header class="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-3.5 sticky top-0 z-30 shadow-xs backdrop-blur-md bg-white/95">
+      <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
         
-        <!-- ================================================================= -->
-        <!-- HEADER PRINCIPAL CON ACCIONES RÁPIDAS                             -->
-        <!-- ================================================================= -->
-        <header class="bg-white border-b border-slate-200/80 px-6 sm:px-8 py-4 sticky top-0 z-30 shadow-xs">
-            <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 text-white shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-lg font-bold tracking-tight text-slate-800 uppercase flex items-center gap-2">
-                            Cultivo<span class="text-emerald-600">OS</span>
-                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                Centro de Control
-                            </span>
-                        </h1>
-                        <p class="text-xs text-slate-400 font-medium">Monitoreo Agronómico, Salas & Genéticas</p>
-                    </div>
+        <!-- LOGO & BRAND -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-md shadow-emerald-200 text-white font-bold shrink-0">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-black tracking-tight uppercase text-slate-900">
+                Cultivo<span class="text-emerald-600">OS</span>
+              </h1>
+              <span class="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Telemetría & Hub
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium hidden sm:block">
+              Control de Salas &bull; Lotes &bull; Eventos &bull; Registros Diarios
+            </p>
+          </div>
+        </div>
+
+        <!-- ACCIONES RÁPIDAS Y MENÚ DE PERFIL / LOGIN -->
+        <div class="flex items-center gap-2.5">
+          <Link :href="route('salas.create')" class="hidden md:inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all">
+            + Nueva Sala
+          </Link>
+
+          <Link :href="route('catalogo-variedades.index')" class="hidden md:inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all">
+            + Variedad
+          </Link>
+
+          <button @click="modalEventoAbierto = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm shadow-emerald-200 transition-all cursor-pointer">
+            + Evento
+          </button>
+
+          <button @click="modalRegistroAbierto = true" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer">
+            + Registro Diario
+          </button>
+
+          <!-- SECCIÓN DE AUTENTICACIÓN / MENÚ DE PERFIL DROPDOWN -->
+          <div class="relative pl-2 border-l border-slate-200">
+            <template v-if="estaAutenticado">
+              <button
+                @click="menuPerfilAbierto = !menuPerfilAbierto"
+                class="flex items-center gap-2.5 p-1 rounded-2xl hover:bg-slate-100 transition-all cursor-pointer border border-slate-200/80 bg-white"
+              >
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-xs font-black shadow-xs">
+                  {{ data.user.name?.slice(0, 2).toUpperCase() }}
+                </div>
+                <div class="text-left hidden sm:block pr-1.5">
+                  <div class="text-xs font-bold text-slate-900 leading-tight">{{ data.user.name }}</div>
+                  <div class="text-[10px] text-slate-400 font-medium leading-none">{{ data.user.role || 'Operador' }}</div>
+                </div>
+                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              <!-- DROPDOWN DE PERFIL -->
+              <div
+                v-if="menuPerfilAbierto"
+                class="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2"
+              >
+                <div class="px-4 py-3 border-b border-slate-100">
+                  <p class="text-xs font-bold text-slate-900">{{ data.user.name }}</p>
+                  <p class="text-[11px] text-slate-400 font-medium truncate">{{ data.user.email }}</p>
+                  <span class="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                    {{ data.user.role || 'Agrónomo Autorizado' }}
+                  </span>
                 </div>
 
-                <!-- ACCESOS DIRECTOS A FORMULARIOS (SALAS, VARIEDADES, BITÁCORA) -->
-                <div class="flex items-center flex-wrap gap-2">
-                    <a
-                        :href="typeof route === 'function' ? route('salas.creates') : '#'"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition-all cursor-pointer"
-                    >
-                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>+ Nueva Sala</span>
-                    </a>
-
-                    <a
-                        :href="typeof route === 'function' ? route('catalogo-variedades.index') : '#'"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200 transition-all cursor-pointer"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>+ Nueva Variedad</span>
-                    </a>
-
-                    <button
-                        type="button"
-                        @click="abrirModalBitacora()"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all cursor-pointer"
-                    >
-                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        <span>+ Bitácora</span>
-                    </button>
+                <div class="py-1 text-xs">
+                  <Link :href="route('profile.edit')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
+                    <span>👤</span> Mi Perfil de Usuario
+                  </Link>
+                  <Link :href="route('salas.index')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
+                    <span>🏢</span> Gestión de Instalaciones
+                  </Link>
+                  <Link :href="route('timeline.index')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
+                    <span>📅</span> Cronogramas & TimeLines
+                  </Link>
                 </div>
+
+                <div class="pt-1 border-t border-slate-100">
+                  <button
+                    @click="cerrarSesion"
+                    class="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    <span>🚪</span> Cerrar Sesión
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <Link :href="route('login')" class="text-xs font-bold text-slate-700 hover:text-emerald-600 px-2 py-1">
+                  Iniciar Sesión
+                </Link>
+                <Link :href="route('register')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold">
+                  Registrarse
+                </Link>
+              </div>
+            </template>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================================= -->
+    <!-- CUERPO PRINCIPAL DEL DASHBOARD                                   -->
+    <!-- ================================================================= -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
+      
+      <!-- 1. MÉTRICAS CLAVE EN TARJETAS -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Salas Operativas</span>
+          <div class="text-2xl font-black text-slate-900 mt-1">{{ data.salas.length }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lotes en Floración</span>
+          <div class="text-2xl font-black text-emerald-600 mt-1">{{ data.cultivos.length }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Población Vegetal</span>
+          <div class="text-2xl font-black text-indigo-600 mt-1">{{ totalPlantas }} un.</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Potencia Lumínica</span>
+          <div class="text-2xl font-black text-amber-600 mt-1">{{ (totalWatts / 1000).toFixed(1) }} kW</div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs col-span-2 sm:col-span-1">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Planificaciones Activas</span>
+          <div class="text-2xl font-black text-purple-600 mt-1">{{ data.planificaciones.length }}</div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- 2. SECCIÓN: CARDS DE SALAS CON RESÚMENES & BOTÓN DE DETALLE     -->
+      <!-- =============================================================== -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Instalaciones & Climatización
             </div>
-        </header>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Salas de Cultivo & Módulos Climatizados
+            </h2>
+          </div>
 
-        <!-- ================================================================= -->
-        <!-- CONTENIDO PRINCIPAL DEL DASHBOARD                                -->
-        <!-- ================================================================= -->
-        <main class="flex-1 p-4 sm:p-8">
-            <div class="max-w-7xl mx-auto space-y-8">
-
-                <!-- 1. GRID DE MÉTRICAS CLAVE -->
-                <section class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    <!-- Salas Activas -->
-                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span class="text-xs font-bold uppercase tracking-wider">Salas Operativas</span>
-                            <span class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <span class="text-2xl sm:text-3xl font-extrabold text-slate-800">{{ salasActivas }}</span>
-                            <span class="text-xs text-slate-400 font-semibold">de {{ props.salas.length }} totales</span>
-                        </div>
-                    </div>
-
-                    <!-- Cultivos Activos -->
-                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span class="text-xs font-bold uppercase tracking-wider">Cultivos en Curso</span>
-                            <span class="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <span class="text-2xl sm:text-3xl font-extrabold text-slate-800">{{ props.cultivos.length }}</span>
-                            <span class="text-xs text-slate-400 font-semibold">lotes activos</span>
-                        </div>
-                    </div>
-
-                    <!-- Plantas Totales -->
-                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span class="text-xs font-bold uppercase tracking-wider">Población Vegetal</span>
-                            <span class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <span class="text-2xl sm:text-3xl font-extrabold text-slate-800">{{ totalPlantas }}</span>
-                            <span class="text-xs text-slate-400 font-semibold">plantas</span>
-                        </div>
-                    </div>
-
-                    <!-- Catálogo de Variedades -->
-                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span class="text-xs font-bold uppercase tracking-wider">Variedades Genéticas</span>
-                            <span class="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <span class="text-2xl sm:text-3xl font-extrabold text-slate-800">{{ props.totalVariedades }}</span>
-                            <span class="text-xs text-slate-400 font-semibold">en catálogo</span>
-                        </div>
-                    </div>
-
-                    <!-- Tareas Pendientes -->
-                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between col-span-2 lg:col-span-1">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span class="text-xs font-bold uppercase tracking-wider">Tareas Pendientes</span>
-                            <span class="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                            </span>
-                        </div>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <span class="text-2xl sm:text-3xl font-extrabold text-rose-600">{{ tareasPendientesCount }}</span>
-                            <span class="text-xs text-slate-400 font-semibold">por completar</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 2. SECCIÓN PRINCIPAL DE CULTIVOS EN CURSO -->
-                <section class="space-y-4">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                Cultivos Activos y Ciclos Botánicos
-                            </h2>
-                            <p class="text-xs text-slate-500">Monitoreo de etapa fenológica, salud y días transcurridos</p>
-                        </div>
-
-                        <!-- Filtros por etapa -->
-                        <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 self-start sm:self-auto text-xs font-bold">
-                            <button
-                                type="button"
-                                @click="filtroEtapaCultivo = 'TODOS'"
-                                :class="filtroEtapaCultivo === 'TODOS' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'"
-                                class="px-3 py-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Todos ({{ props.cultivos.length }})
-                            </button>
-                            <button
-                                type="button"
-                                @click="filtroEtapaCultivo = 'FLORACION'"
-                                :class="filtroEtapaCultivo === 'FLORACION' ? 'bg-amber-500 text-white' : 'text-slate-600 hover:text-slate-900'"
-                                class="px-3 py-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Floración
-                            </button>
-                            <button
-                                type="button"
-                                @click="filtroEtapaCultivo = 'VEGETATIVO'"
-                                :class="filtroEtapaCultivo === 'VEGETATIVO' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-slate-900'"
-                                class="px-3 py-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Vegetativo
-                            </button>
-                            <button
-                                type="button"
-                                @click="filtroEtapaCultivo = 'SECADO'"
-                                :class="filtroEtapaCultivo === 'SECADO' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'"
-                                class="px-3 py-1 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Secado
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Grid de Cards de Cultivos -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                            v-for="cultivo in cultivosFiltrados"
-                            :key="cultivo.id"
-                            class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-shadow relative flex flex-col justify-between space-y-4"
-                        >
-                            <!-- Header de la card -->
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-[11px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                                            {{ cultivo.codigo }}
-                                        </span>
-                                        <span
-                                            class="text-[10px] font-bold px-2 py-0.5 rounded uppercase"
-                                            :class="cultivo.etapa === 'FLORACION' ? 'bg-amber-100 text-amber-800' : cultivo.etapa === 'VEGETATIVO' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'"
-                                        >
-                                            {{ cultivo.etapa }} &bull; Sem {{ cultivo.semana_actual }}
-                                        </span>
-                                    </div>
-                                    <h3 class="text-base font-bold text-slate-900">{{ cultivo.nombre_lote }}</h3>
-                                    <p class="text-xs text-slate-500 mt-0.5">
-                                        {{ cultivo.variedad_nombre }} &bull; <span class="font-medium">{{ cultivo.banco }}</span>
-                                    </p>
-                                </div>
-
-                                <div class="text-right shrink-0">
-                                    <span
-                                        class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full"
-                                        :class="cultivo.salud === 'OPTIMO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
-                                    >
-                                        <span class="w-1.5 h-1.5 rounded-full" :class="cultivo.salud === 'OPTIMO' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-                                        {{ cultivo.salud }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Barra de progreso del ciclo -->
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between text-xs font-semibold text-slate-600">
-                                    <span>Día {{ cultivo.dia_actual }} de {{ cultivo.dias_totales_estimados }}</span>
-                                    <span>{{ Math.round((cultivo.dia_actual / cultivo.dias_totales_estimados) * 100) }}% completado</span>
-                                </div>
-                                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                        class="h-full bg-emerald-500 rounded-full transition-all"
-                                        :style="{ width: Math.min(100, Math.round((cultivo.dia_actual / cultivo.dias_totales_estimados) * 100)) + '%' }"
-                                    ></div>
-                                </div>
-                            </div>
-
-                            <!-- Footer de la card: Sala + Acciones -->
-                            <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                                <div class="flex items-center gap-1.5">
-                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                    <span>{{ cultivo.sala_nombre }}</span>
-                                    <span class="text-slate-300">&bull;</span>
-                                    <span>{{ cultivo.plantas_totales }} macetas</span>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    @click="abrirModalBitacora(cultivo)"
-                                    class="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                                >
-                                    <span>+ Registro</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 3. SECCIÓN DOBLE: PENDIENTES & BITÁCORA EN VIVO -->
-                <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    
-                    <!-- COLUMNA IZQUIERDA: LISTA DE PENDIENTES (7 COLS) -->
-                    <div class="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                                    Lista de Tareas Agronómicas
-                                </h3>
-                                <p class="text-xs text-slate-400">Riegos, fertilización, podas y mantenimiento</p>
-                            </div>
-
-                            <button
-                                type="button"
-                                @click="modalTareaAbierto = true"
-                                class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
-                            >
-                                + Nueva Tarea
-                            </button>
-                        </div>
-
-                        <!-- Filtros de tareas -->
-                        <div class="flex gap-2 text-xs font-bold overflow-x-auto pb-1">
-                            <button
-                                type="button"
-                                @click="filtroTareas = 'PENDIENTES'"
-                                :class="filtroTareas === 'PENDIENTES' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'"
-                                class="px-3 py-1 rounded-lg cursor-pointer transition-colors"
-                            >
-                                Pendientes ({{ tareasPendientesCount }})
-                            </button>
-                            <button
-                                type="button"
-                                @click="filtroTareas = 'ALTA_PRIORIDAD'"
-                                :class="filtroTareas === 'ALTA_PRIORIDAD' ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600'"
-                                class="px-3 py-1 rounded-lg cursor-pointer transition-colors"
-                            >
-                                Urgentes
-                            </button>
-                            <button
-                                type="button"
-                                @click="filtroTareas = 'COMPLETADAS'"
-                                :class="filtroTareas === 'COMPLETADAS' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'"
-                                class="px-3 py-1 rounded-lg cursor-pointer transition-colors"
-                            >
-                                Hechas
-                            </button>
-                        </div>
-
-                        <!-- Listado interactivo de tareas -->
-                        <div class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                            <div
-                                v-for="tarea in tareasFiltradas"
-                                :key="tarea.id"
-                                @click="toggleTarea(tarea.id)"
-                                class="p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none"
-                                :class="tarea.completada ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-xs'"
-                            >
-                                <div
-                                    class="w-5 h-5 rounded-lg border mt-0.5 flex items-center justify-center shrink-0 transition-colors"
-                                    :class="tarea.completada ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'"
-                                >
-                                    <svg v-if="tarea.completada" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                                </div>
-
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center justify-between gap-2">
-                                        <h4 class="text-xs font-bold text-slate-800 truncate" :class="{ 'line-through text-slate-400': tarea.completada }">
-                                            {{ tarea.titulo }}
-                                        </h4>
-                                        <span
-                                            class="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
-                                            :class="tarea.prioridad === 'ALTA' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'"
-                                        >
-                                            {{ tarea.prioridad }}
-                                        </span>
-                                    </div>
-                                    <p v-if="tarea.descripcion" class="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
-                                        {{ tarea.descripcion }}
-                                    </p>
-                                    <div class="mt-1 flex items-center gap-2 text-[10px] font-medium text-slate-400">
-                                        <span>{{ tarea.sala_nombre }}</span>
-                                        <span>&bull;</span>
-                                        <span>Vence: {{ tarea.fecha_limite }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- COLUMNA DERECHA: BITÁCORA Y ACTUALIZACIONES (5 COLS) -->
-                    <div class="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div>
-                                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    Actualizaciones en Vivo
-                                </h3>
-                                <p class="text-xs text-slate-400">Feed de bitácora y manejos recientes</p>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
-                            <div
-                                v-for="item in listaBitacoras"
-                                :key="item.id"
-                                class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/70 space-y-2"
-                            >
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase">
-                                            {{ item.tipo }}
-                                        </span>
-                                        <span class="text-[11px] font-semibold text-slate-600 truncate">{{ item.sala_nombre }}</span>
-                                    </div>
-                                    <span class="text-[10px] font-medium text-slate-400 shrink-0">{{ item.fecha_hora }}</span>
-                                </div>
-
-                                <h4 class="text-xs font-bold text-slate-800">{{ item.titulo }}</h4>
-                                <p class="text-[11px] text-slate-500 leading-relaxed">{{ item.descripcion }}</p>
-
-                                <div v-if="item.ec || item.ph" class="flex gap-2 pt-1 border-t border-slate-200/50 text-[10px] font-mono text-slate-600">
-                                    <span v-if="item.ec" class="bg-white px-2 py-0.5 rounded border border-slate-200">
-                                        EC: <strong>{{ item.ec }} mS/cm</strong>
-                                    </span>
-                                    <span v-if="item.ph" class="bg-white px-2 py-0.5 rounded border border-slate-200">
-                                        pH: <strong>{{ item.ph }}</strong>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 text-xs font-bold shadow-xs">
+              <button @click="filtroTipoSala = 'TODOS'" :class="filtroTipoSala === 'TODOS' ? 'bg-slate-900 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Todas ({{ data.salas.length }})
+              </button>
+              <button @click="filtroTipoSala = 'FLORACION'" :class="filtroTipoSala === 'FLORACION' ? 'bg-amber-500 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Floración
+              </button>
+              <button @click="filtroTipoSala = 'VEGETACION'" :class="filtroTipoSala === 'VEGETACION' ? 'bg-emerald-600 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Vegetación
+              </button>
             </div>
-        </main>
+            <Link :href="route('salas.create')" class="bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+              + Sala
+            </Link>
+          </div>
+        </div>
 
-        <!-- FOOTER -->
-        <footer class="bg-white border-t border-slate-200/80 px-6 py-4 text-center text-xs text-slate-400 shrink-0">
-            CultivoOS &bull; Panel de Monitoreo &bull; Laravel 11 / 12 + Inertia Vue 3 + Tailwind CSS
-        </footer>
-    </div>
+        <!-- GRID DE CARDS DE SALAS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div
+            v-for="sala in salasFiltradas"
+            :key="sala.id"
+            class="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+          >
+            <div class="p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  {{ sala.codigo }}
+                </span>
+                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full" :class="sala.estado === 'ACTIVA' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                  {{ sala.estado }}
+                </span>
+              </div>
+
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  {{ sala.nombre }}
+                </h3>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">
+                  Tipo: <strong class="text-slate-700">{{ sala.tipo }}</strong> &bull; Dimensión: {{ sala.ancho_m }}m &times; {{ sala.largo_m }}m
+                </p>
+              </div>
+
+              <!-- Telemetría en vivo -->
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                  <span class="text-[9px] text-slate-400 uppercase font-bold">Temp / HR</span>
+                  <div class="font-bold text-slate-900 text-xs mt-0.5">
+                    {{ sala.temperatura_c }}°C &bull; {{ sala.humedad_pct }}%
+                  </div>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                  <span class="text-[9px] text-slate-400 uppercase font-bold">VPD / CO₂</span>
+                  <div class="font-bold text-amber-700 text-xs mt-0.5">
+                    {{ sala.vpd_kpa }} kPa &bull; {{ sala.co2_ppm }} ppm
+                  </div>
+                </div>
+              </div>
+
+              <!-- Especificaciones -->
+              <div class="text-xs pt-1 space-y-1 border-t border-slate-100 text-slate-500 font-medium">
+                <div class="flex justify-between">
+                  <span>Potencia Luces:</span>
+                  <strong class="text-slate-800">{{ sala.potencia_luces_w }} W ({{ (sala.potencia_luces_w / 1000).toFixed(1) }} kW)</strong>
+                </div>
+                <div class="flex justify-between">
+                  <span>Capacidad Macetas:</span>
+                  <strong class="text-slate-800">{{ sala.capacidad_macetas }} macetas</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- BOTÓN IR AL DETALLE DE SALA -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200/80 flex items-center gap-2">
+              <button
+                @click="modalDetalleSala = sala"
+                class="flex-1 text-center py-2 px-3 bg-white hover:bg-slate-900 text-slate-700 hover:text-white border border-slate-200 hover:border-slate-900 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              >
+                Ver Detalle & Sensores &rarr;
+              </button>
+              <Link
+                :href="route('salas.creates', sala.id)"
+                class="px-3 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all"
+                title="Ir a la página de sala"
+              >
+                ⚙️
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- 3. SECCIÓN: CARDS DE CULTIVOS CON RESÚMENES & BOTÓN DE DETALLE  -->
+      <!-- =============================================================== -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Seguimiento Fenológico en Vivo
+            </div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              Lotes y Cultivos en Desarrollo
+            </h2>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 text-xs font-bold shadow-xs">
+              <button @click="filtroEtapaCultivo = 'TODOS'" :class="filtroEtapaCultivo === 'TODOS' ? 'bg-slate-900 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Todos ({{ data.cultivos.length }})
+              </button>
+              <button @click="filtroEtapaCultivo = 'FLORACION'" :class="filtroEtapaCultivo === 'FLORACION' ? 'bg-amber-500 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Floración
+              </button>
+              <button @click="filtroEtapaCultivo = 'VEGETATIVO'" :class="filtroEtapaCultivo === 'VEGETATIVO' ? 'bg-emerald-600 text-white' : 'text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+                Vegetativo
+              </button>
+            </div>
+            <Link :href="route('cultivos.create')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs">
+              + Iniciar Lote
+            </Link>
+          </div>
+        </div>
+
+        <!-- GRID DE CARDS DE CULTIVOS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div
+            v-for="cultivo in cultivosFiltrados"
+            :key="cultivo.id"
+            class="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 group"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span class="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/80">
+                    {{ cultivo.codigo }}
+                  </span>
+                  <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-lg uppercase border bg-amber-100 text-amber-800 border-amber-200">
+                    {{ cultivo.etapa }} &bull; Sem {{ cultivo.semana_actual }}
+                  </span>
+                  <span class="text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                    ☀️ {{ cultivo.fotoperiodo }}
+                  </span>
+                </div>
+
+                <h3 class="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  {{ cultivo.nombre_lote }}
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Variedad: <strong class="text-slate-800">{{ cultivo.variedad_nombre }}</strong> &bull; <span>{{ cultivo.banco }}</span>
+                </p>
+              </div>
+
+              <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                ✓ Óptimo
+              </span>
+            </div>
+
+            <!-- Barra de avance de ciclo -->
+            <div class="space-y-1.5 bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200/70">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-slate-700">
+                  Semana {{ cultivo.semana_actual }} &bull; Día {{ cultivo.dia_actual || cultivo.semana_actual * 7 }} de {{ cultivo.dias_totales_estimados }}
+                </span>
+                <span class="font-extrabold text-emerald-700">
+                  {{ Math.min(100, Math.round(((cultivo.semana_actual || 1) / (cultivo.dias_totales_estimados ? Math.round(cultivo.dias_totales_estimados / 7) : 9)) * 100)) }}%
+                </span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-emerald-500 rounded-full transition-all"
+                  :style="{ width: Math.min(100, Math.round(((cultivo.semana_actual || 1) / (cultivo.dias_totales_estimados ? Math.round(cultivo.dias_totales_estimados / 7) : 9)) * 100)) + '%' }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Footer de Card con Sala y Botón Ver Detalle -->
+            <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-slate-700">🏢 {{ cultivo.sala_nombre }}</span>
+                <span class="text-slate-300">&bull;</span>
+                <span>{{ cultivo.plantas_totales }} macetas</span>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  @click="modalDetalleCultivo = cultivo"
+                  class="inline-flex items-center gap-1 text-xs font-bold text-white bg-slate-900 hover:bg-emerald-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+                >
+                  Ver Detalle &rarr;
+                </button>
+                <Link
+                  :href="route('salas.creates', cultivo.id)"
+                  class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all text-xs"
+                >
+                  Página
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- 4. SECCIÓN: PLANIFICACIONES & EVENTOS vs REGISTROS DIARIOS       -->
+      <!-- =============================================================== -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- PLANIFICACIONES & EVENTOS (7 COLUMNAS) -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Planificaciones & Eventos Operativos</h3>
+              <p class="text-xs text-slate-400">Eventos vinculados a TimeLine o ad-hoc</p>
+            </div>
+            <button @click="modalEventoAbierto = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">
+              + Nuevo Evento
+            </button>
+          </div>
+
+          <!-- Filtros de eventos -->
+          <div class="flex gap-1.5 overflow-x-auto pb-1 text-xs font-bold">
+            <button @click="filtroEventos = 'PENDIENTES'" :class="filtroEventos === 'PENDIENTES' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+              Pendientes
+            </button>
+            <button @click="filtroEventos = 'PLANIFICADOS'" :class="filtroEventos === 'PLANIFICADOS' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+              Con Planificación
+            </button>
+            <button @click="filtroEventos = 'INDEPENDIENTES'" :class="filtroEventos === 'INDEPENDIENTES' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+              Eventos Libres
+            </button>
+            <button @click="filtroEventos = 'TODOS'" :class="filtroEventos === 'TODOS' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600'" class="px-3 py-1.5 rounded-xl cursor-pointer">
+              Todos
+            </button>
+          </div>
+
+          <!-- Lista de Eventos -->
+          <div class="space-y-3 max-h-[440px] overflow-y-auto">
+            <div v-for="evento in eventosFiltrados" :key="evento.id" @click="toggleEstadoEvento(evento.id)" class="p-3.5 bg-slate-50 hover:bg-white rounded-2xl border border-slate-200 transition-all cursor-pointer space-y-1.5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">{{ evento.tipo_evento?.nombre || 'Evento' }}</span>
+                  <span v-if="evento.time_line_id" class="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">🔗 Plan: {{ evento.time_line?.nombre }}</span>
+                  <span v-else class="text-[9px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded">⚡ Libre</span>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded" :class="evento.estado_evento?.nombre === 'REALIZADO' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                  {{ evento.estado_evento?.nombre || 'PENDIENTE' }}
+                </span>
+              </div>
+              <h4 class="text-xs font-bold text-slate-900" :class="{ 'line-through text-slate-400': evento.estado_evento?.nombre === 'REALIZADO' }">{{ evento.nombre }}</h4>
+              <p v-if="evento.descripcion" class="text-[11px] text-slate-500 line-clamp-2">{{ evento.descripcion }}</p>
+              <div class="flex items-center gap-3 text-[10px] text-slate-400 pt-1 border-t border-slate-100 font-medium">
+                <span>🌱 {{ evento.cultivo?.nombre_lote }}</span>
+                <span>📅 {{ evento.fecha_inicio_planificacion }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REGISTROS DIARIOS DE VARIABLES (5 COLUMNAS) -->
+        <div class="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Registros Diarios de Variables</h3>
+              <p class="text-xs text-slate-400">VPD, CO2, Temp (Aire/Sol/Sustrato) & Caudales</p>
+            </div>
+            <button @click="modalRegistroAbierto = true" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">
+              + Nuevo
+            </button>
+          </div>
+
+          <!-- Feed de Registros -->
+          <div class="space-y-3.5 max-h-[440px] overflow-y-auto">
+            <div v-for="item in registrosFiltrados" :key="item.id" class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">{{ item.cultivo?.codigo }}</span>
+                  <h4 class="text-xs font-bold text-slate-900 mt-1">{{ item.nombre }}</h4>
+                </div>
+                <span class="text-[10px] text-slate-400">{{ item.fecha_registro?.slice(0, 16) }}</span>
+              </div>
+
+              <!-- Grid de variables del modelo Registro -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px]">
+                <div class="bg-white p-1.5 rounded-lg border border-slate-200">
+                  <span class="text-[9px] text-slate-400 uppercase">Aire / HR</span>
+                  <div class="font-bold text-slate-800">{{ item.temperatura }}°C / {{ item.humedad }}%</div>
+                </div>
+                <div class="bg-white p-1.5 rounded-lg border border-slate-200">
+                  <span class="text-[9px] text-slate-400 uppercase">VPD / CO2</span>
+                  <div class="font-bold text-amber-700">{{ item.vpd }} kPa / {{ item.co2 }} ppm</div>
+                </div>
+                <div class="bg-white p-1.5 rounded-lg border border-slate-200">
+                  <span class="text-[9px] text-slate-400 uppercase">Sol / Sustrato</span>
+                  <div class="font-bold text-teal-700">{{ item.temperatura_solucion }}°C / {{ item.temperatura_sustrato }}°C</div>
+                </div>
+                <div class="bg-white p-1.5 rounded-lg border border-slate-200">
+                  <span class="text-[9px] text-slate-400 uppercase">Caudal In/Ex</span>
+                  <div class="font-mono font-bold text-slate-700">{{ item.flujo_hora_intraccion }}/{{ item.flujo_hora_extracion }}</div>
+                </div>
+              </div>
+
+              <div class="text-[10px] text-slate-400 pt-1 flex justify-between">
+                <span>Por: <strong>{{ item.user?.name || 'Operador' }}</strong></span>
+                <span class="font-mono">ΔP: {{ (item.flujo_hora_extracion - item.flujo_hora_intraccion).toFixed(0) }} m³/h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
 </template>
