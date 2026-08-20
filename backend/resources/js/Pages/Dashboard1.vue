@@ -43,6 +43,7 @@ const data = {
 
 // Estados locales de interfaz
 const menuPerfilAbierto = ref(false)
+const menuMobileAbierto = ref(false)
 const estaAutenticado = ref(true) // Toggle interactivo para modo usuario vs invitado
 const filtroEventos = ref<'TODOS' | 'PENDIENTES' | 'PLANIFICADOS' | 'INDEPENDIENTES' | 'REALIZADOS'>('PENDIENTES')
 const filtroCultivoRegistro = ref<string>('TODOS')
@@ -160,64 +161,71 @@ function cerrarSesion() {
     <!-- ================================================================= -->
     <!-- TOPBAR CON NAVEGACIÓN Y MENÚ DE USUARIO / LOGIN & PERFIL          -->
     <!-- ================================================================= -->
-    <header class="bg-white border-b border-slate-200/80 px-4 sm:px-8 py-3.5 sticky top-0 z-30 shadow-xs backdrop-blur-md bg-white/95">
-      <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+    <header class="bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 py-3 sticky top-0 z-30 shadow-xs backdrop-blur-md bg-white/95">
+      <div class="max-w-7xl mx-auto flex justify-between items-center gap-3">
         
         <!-- LOGO & BRAND -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-md shadow-emerald-200 text-white font-bold shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-md shadow-emerald-200 text-white font-bold shrink-0">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="text-lg font-black tracking-tight uppercase text-slate-900">
+              <h1 class="text-base sm:text-lg font-black tracking-tight uppercase text-slate-900">
                 Cultivo<span class="text-emerald-600">OS</span>
               </h1>
               <span class="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                Telemetría & Hub
+                Dashboard
               </span>
             </div>
-            <p class="text-xs text-slate-400 font-medium hidden sm:block">
-              Control de Salas &bull; Lotes &bull; Eventos &bull; Registros Diarios
+            <p class="text-[11px] text-slate-400 font-medium hidden md:block">
+              Salas &bull; Cultivos &bull; Variedades &bull; Eventos &bull; Registros
             </p>
           </div>
         </div>
 
-        <!-- ACCIONES RÁPIDAS Y MENÚ DE PERFIL / LOGIN -->
-        <div class="flex items-center gap-2.5">
-          <Link :href="route('salas.create')" class="hidden md:inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all">
-            + Nueva Sala
+        <!-- ACCIONES RÁPIDAS (DESKTOP) -->
+        <div class="hidden lg:flex items-center gap-2">
+          <Link :href="route('cultivos.create')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200 transition-all">
+            <span>🌱</span> + Cultivo
           </Link>
 
-          <Link :href="route('catalogo-variedades.index')" class="hidden md:inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-xs transition-all">
-            + Variedad
+          <Link :href="route('catalogo-variedades.index')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 shadow-xs transition-all">
+            <span>🧬</span> + Variedad
           </Link>
 
-          <button @click="modalEventoAbierto = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm shadow-emerald-200 transition-all cursor-pointer">
-            + Evento
+          <Link :href="route('salas.create')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition-all">
+            <span>🏢</span> + Sala
+          </Link>
+
+          <button @click="modalEventoAbierto = true" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 shadow-xs transition-all cursor-pointer">
+            <span>📅</span> + Evento
           </button>
 
-          <button @click="modalRegistroAbierto = true" class="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer">
-            + Registro Diario
+          <button @click="modalRegistroAbierto = true" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all cursor-pointer">
+            <span>📋</span> + Registro
           </button>
+        </div>
 
-          <!-- SECCIÓN DE AUTENTICACIÓN / MENÚ DE PERFIL DROPDOWN -->
-          <div class="relative pl-2 border-l border-slate-200">
+        <!-- PERFIL / LOGIN & BOTÓN HAMBURGUESA MOBILE -->
+        <div class="flex items-center gap-2">
+          <!-- Perfil usuario -->
+          <div class="relative">
             <template v-if="estaAutenticado">
               <button
                 @click="menuPerfilAbierto = !menuPerfilAbierto"
-                class="flex items-center gap-2.5 p-1 rounded-2xl hover:bg-slate-100 transition-all cursor-pointer border border-slate-200/80 bg-white"
+                class="flex items-center gap-2 p-1 rounded-2xl hover:bg-slate-100 transition-all cursor-pointer border border-slate-200/80 bg-white"
               >
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-xs font-black shadow-xs">
+                <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white text-xs font-black shadow-xs">
                   {{ data.user.name?.slice(0, 2).toUpperCase() }}
                 </div>
-                <div class="text-left hidden sm:block pr-1.5">
+                <div class="text-left hidden sm:block pr-1">
                   <div class="text-xs font-bold text-slate-900 leading-tight">{{ data.user.name }}</div>
                   <div class="text-[10px] text-slate-400 font-medium leading-none">{{ data.user.role || 'Operador' }}</div>
                 </div>
-                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -229,8 +237,8 @@ function cerrarSesion() {
               >
                 <div class="px-4 py-3 border-b border-slate-100">
                   <p class="text-xs font-bold text-slate-900">{{ data.user.name }}</p>
-                  <p class="text-[11px] text-slate-400 font-medium truncate">{{ data.user.email }}</p>
-                  <span class="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
+                  <p class="text-[11px] text-slate-400 font-medium truncate mt-0.5">{{ data.user.email }}</p>
+                  <span class="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">
                     {{ data.user.role || 'Agrónomo Autorizado' }}
                   </span>
                 </div>
@@ -239,11 +247,14 @@ function cerrarSesion() {
                   <Link :href="route('profile.edit')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
                     <span>👤</span> Mi Perfil de Usuario
                   </Link>
+                  <Link :href="route('cultivos.create')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
+                    <span>🌱</span> Nuevo Cultivo
+                  </Link>
+                  <Link :href="route('catalogo-variedades.index')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
+                    <span>🧬</span> Catálogo de Variedades
+                  </Link>
                   <Link :href="route('salas.index')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
                     <span>🏢</span> Gestión de Instalaciones
-                  </Link>
-                  <Link :href="route('timeline.index')" class="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold">
-                    <span>📅</span> Cronogramas & TimeLines
                   </Link>
                 </div>
 
@@ -259,17 +270,48 @@ function cerrarSesion() {
             </template>
 
             <template v-else>
-              <div class="flex items-center gap-2">
-                <Link :href="route('login')" class="text-xs font-bold text-slate-700 hover:text-emerald-600 px-2 py-1">
-                  Iniciar Sesión
-                </Link>
-                <Link :href="route('register')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold">
-                  Registrarse
-                </Link>
-              </div>
+              <button
+                @click="estaAutenticado = true"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+              >
+                <span>🔑</span> Iniciar Sesión
+              </button>
             </template>
           </div>
 
+          <!-- BOTÓN HAMBURGUESA MOBILE -->
+          <button
+            @click="menuMobileAbierto = !menuMobileAbierto"
+            class="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            title="Abrir menú"
+          >
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path v-if="!menuMobileAbierto" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- MENÚ DESPLEGABLE MOBILE -->
+      <div v-if="menuMobileAbierto" class="lg:hidden mt-3 pt-3 border-t border-slate-200 flex flex-col gap-2">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <Link :href="route('cultivos.create')" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs">
+            <span>🌱</span> + Cultivo
+          </Link>
+          <Link :href="route('catalogo-variedades.index')" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
+            <span>🧬</span> + Variedad
+          </Link>
+          <Link :href="route('salas.create')" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200">
+            <span>🏢</span> + Sala
+          </Link>
+          <button @click="modalEventoAbierto = true; menuMobileAbierto = false" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200">
+            <span>📅</span> + Evento
+          </button>
+          <button @click="modalRegistroAbierto = true; menuMobileAbierto = false" class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white">
+            <span>📋</span> + Registro
+          </button>
         </div>
       </div>
     </header>
@@ -400,7 +442,7 @@ function cerrarSesion() {
                 Ver Detalle & Sensores &rarr;
               </button>
               <Link
-                :href="route('salas.creates', sala.id)"
+                :href="route('salas.show', sala.id)"
                 class="px-3 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all"
                 title="Ir a la página de sala"
               >
@@ -512,7 +554,7 @@ function cerrarSesion() {
                   Ver Detalle &rarr;
                 </button>
                 <Link
-                  :href="route('salas.creates', cultivo.id)"
+                  :href="route('cultivos.show', cultivo.id)"
                   class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all text-xs"
                 >
                   Página

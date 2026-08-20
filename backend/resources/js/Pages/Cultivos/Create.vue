@@ -1,589 +1,520 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useForm, Head } from '@inertiajs/vue3'
+import { Head, Link, useForm, router } from '@inertiajs/vue3'
 
-// ==========================================
-// TIPOS E INTERFACES
-// ==========================================
-export interface TipoVariedad {
-    id: string
+interface CatalogoVariedad {
+  id: string
+  nombre: string
+  banco: string
+  descripcion: string | null
+  dias_ciclo: number
+  tipo_variedad_id: string
+  tipo_variedad?: {
     nombre: string
-    categoria?: 'SATIVA' | 'INDICA' | 'HIBRIDA' | 'AUTOMATICA' | 'CBD' | string
-    descripcion?: string
-    color?: string
-    proporcion?: string
+    categoria: string
+  }
 }
 
-// ==========================================
-// PROPS DEL CONTROLADOR LARAVEL
-// (Inertia::render('CatalogoVariedades/Create', ['tiposVariedad' => $tipos]))
-// ==========================================
-const props = withDefaults(
-    defineProps<{
-        tiposVariedad?: TipoVariedad[]
-    }>(),
-    {
-        tiposVariedad: () => [
-            {
-                id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
-                nombre: 'Sativa Dominante',
-                categoria: 'SATIVA',
-                descripcion: 'Estructura esbelta, entrenudos amplios, floración moderada a larga con terpenos cítricos.',
-                color: 'emerald',
-                proporcion: '80% Sativa / 20% Indica',
-            },
-            {
-                id: '7c2ceb5e-4c8e-4cae-8cee-3c1e8c4eda7e',
-                nombre: 'Indica Dominante',
-                categoria: 'INDICA',
-                descripcion: 'Porte arbustivo compacto, cogollos densos y resinosos, ciclo de floración corto.',
-                color: 'indigo',
-                proporcion: '80% Indica / 20% Sativa',
-            },
-            {
-                id: '5a3deb6f-5d9f-4dbf-7dff-4d2f9d5feb8f',
-                nombre: 'Híbrida Equilibrada',
-                categoria: 'HIBRIDA',
-                descripcion: 'Equilibrio morfológico óptimo, vigor híbrido y producción uniforme.',
-                color: 'amber',
-                proporcion: '50% Sativa / 50% Indica',
-            },
-            {
-                id: '3e4feb7a-6ea0-4ec0-6e00-5e3fae6afc90',
-                nombre: 'Autofloreciente (Ruderalis)',
-                categoria: 'AUTOMATICA',
-                descripcion: 'No fotodependiente. Inicia floración automática a partir de la 3° semana.',
-                color: 'rose',
-                proporcion: 'Automática',
-            },
-            {
-                id: '1f5aeb8b-7fb1-4fd1-5f11-6f4bbf7b0da1',
-                nombre: 'Rica en CBD / Medicinal',
-                categoria: 'CBD',
-                descripcion: 'Selección enfocada en alto contenido de cannabidiol para uso fitoterapéutico.',
-                color: 'teal',
-                proporcion: 'Ratio 1:1 o CBD Pure',
-            },
-        ],
-    }
-)
+interface Sala {
+  id: string
+  nombre: string
+  codigo: string
+  tipo: string
+  capacidad_macetas: number
+}
 
-// ==========================================
-// FORMULARIO CON INERTIA useForm
-// Mapea exactamente el modelo CatalogoVariedad (HasUuids)
-// ==========================================
+interface FaseCultivo {
+  id: string
+  nombre: string
+  codigo: string
+  fotoperiodo_sugerido?: string
+}
+
+interface EstadoCultivo {
+  id: string
+  nombre: string
+  color?: string
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+  role?: string
+}
+
+interface Props {
+  salas: Sala[]
+  fases: FaseCultivo[]
+  estados: EstadoCultivo[]
+  usuarios: User[]
+  catalogoVariedades: CatalogoVariedad[]
+}
+
+const props = defineProps<Props>()
+
+// Pestaña activa del formulario
+const tabActiva = ref<'DATOS_CULTIVO' | 'VARIEDADES' | 'PLANTAS'>('DATOS_CULTIVO')
+
+// Formulario reactivo de Inertia.js (App\Models\Cultivo + App\Models\CultivoVariedad + App\Models\Planta)
 const form = useForm({
-    nombre: '',
-    banco: '',
-    descripcion: '',
-    dias_ciclo: null as number | null,
-    tipo_variedad_id: '' as string,
+  nombre: 'Lote Principal - Ciclo 2026',
+  descripcion: 'Lote de producción comercial con fertirriego orgánico y control de VPD.',
+  duracion_estimada: 63,
+  sala_id: props.salas[0]?.id || '',
+  fase_id: props.fases[1]?.id || props.fases[0]?.id || '',
+  estado_cultivo_id: props.estados[0]?.id || '',
+  usuario_responsable_id: props.usuarios[0]?.id || '',
+  fotoperiodo: '18/6',
+  generar_plantas_automaticas: true,
+  variedades: [
+    {
+catalogo_variedad_id: props.catalogoVariedades?.[0]?.id || '',
+      cantidad_plantas: 36,
+      fecha_inicio: new Date().toISOString().split('T')[0],
+      descripcion: 'Esquejes seleccionados de 1ra generación',
+      prefijo_codigo: 'GG4',
+    },
+  ],
 })
 
-// Bancos de semillas sugeridos para acceso rápido
-const bancosSugeridos = [
-    'Royal Queen Seeds',
-    "Barney's Farm",
-    'Sweet Seeds',
-    'Fast Buds',
-    'Dutch Passion',
-    'DNA Genetics',
-    'Humboldt Seed Co.',
-    'Sensi Seeds',
-]
-
-// Presets de días de ciclo
-const diasPresets = [
-    { dias: 55, label: '55d (~8 sem)', nota: 'Rápida' },
-    { dias: 63, label: '63d (9 sem)', nota: 'Estándar' },
-    { dias: 70, label: '70d (10 sem)', nota: 'Media' },
-    { dias: 84, label: '84d (12 sem)', nota: 'Larga' },
-]
-
-// Estado de guardado local / modal de éxito simulado
-const guardadoExitoso = ref(false)
-const payloadEnviado = ref<any>(null)
-
-// Cálculo en tiempo real de semanas
-const semanasCalculadas = computed(() => {
-    if (!form.dias_ciclo || form.dias_ciclo <= 0) return null
-    return (form.dias_ciclo / 7).toFixed(1)
+// Modal para alta rápida de Variedad en Catálogo
+const modalNuevaVariedad = ref(false)
+const formVariedad = useForm({
+  nombre: '',
+  banco: '',
+  tipo_variedad_id: '',
+  dias_ciclo: 63,
+  descripcion: '',
 })
 
-// Tipo de variedad seleccionado
-const tipoSeleccionado = computed(() => {
-    return props.tiposVariedad.find((t) => t.id === form.tipo_variedad_id) || null
+// Métricas computadas
+const totalPlantas = computed(() => {
+  return form.variedades.reduce((sum, v) => sum + (Number(v.cantidad_plantas) || 0), 0)
 })
 
-// Acciones rápidas
-function setBanco(nombreBanco: string) {
-    form.banco = nombreBanco
+const salaSeleccionada = computed(() => {
+  return props.salas.find((s) => s.id === form.sala_id)
+})
+
+const excedeCapacidad = computed(() => {
+  if (!salaSeleccionada.value || !salaSeleccionada.value.capacidad_macetas) return false
+  return totalPlantas.value > salaSeleccionada.value.capacidad_macetas
+})
+
+// Acciones sobre el array de variedades
+const agregarVariedad = () => {
+  const defaultVar = props.catalogoVariedades[form.variedades.length % props.catalogoVariedades.length] || props.catalogoVariedades[0]
+  const prefijo = defaultVar?.nombre.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase() || 'VAR'
+
+  form.variedades.push({
+    catalogo_variedad_id: defaultVar?.id || '',
+    cantidad_plantas: 12,
+    fecha_inicio: new Date().toISOString().split('T')[0],
+    descripcion: 'Lote secundario',
+    prefijo_codigo: prefijo,
+  })
 }
 
-function setDias(dias: number) {
-    form.dias_ciclo = dias
+const removerVariedad = (index: number) => {
+  if (form.variedades.length > 1) {
+    form.variedades.splice(index, 1)
+  }
 }
 
-function seleccionarTipo(id: string) {
-    form.tipo_variedad_id = id
+// Envío del formulario a Laravel
+const submit = () => {
+  form.post(route('cultivos.store'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      // Redirigir al detalle o dashboard
+    },
+  })
 }
 
-// Envío a Laravel
-function submit() {
-    // Validaciones locales antes del submit
-    form.clearErrors()
-    let hayErrores = false
-
-    if (!form.nombre?.trim()) {
-        form.setError('nombre', 'El nombre de la variedad es obligatorio.')
-        hayErrores = true
-    }
-    if (!form.tipo_variedad_id) {
-        form.setError('tipo_variedad_id', 'Debes seleccionar el tipo de variedad genética.')
-        hayErrores = true
-    }
-    if (form.dias_ciclo !== null && (form.dias_ciclo <= 0 || isNaN(form.dias_ciclo))) {
-        form.setError('dias_ciclo', 'Los días de ciclo deben ser un número decimal mayor a 0.')
-        hayErrores = true
-    }
-
-    if (hayErrores) return
-
-    payloadEnviado.value = {
-        nombre: form.nombre.trim(),
-        banco: form.banco.trim() || null,
-        tipo_variedad_id: form.tipo_variedad_id,
-        dias_ciclo: form.dias_ciclo ? Number(Number(form.dias_ciclo).toFixed(2)) : null,
-        descripcion: form.descripcion.trim() || null,
-    }
-
-    // Llamada oficial Inertia:
-    // @ts-ignore
-    if (typeof route === 'function') {
-        // @ts-ignore
-        form.post(route('catalogo-variedades.store'), {
-            preserveScroll: true,
-            onSuccess: () => {
-                guardadoExitoso.value = true
-                form.reset()
-            },
-        })
-    } else {
-        // Modo demostración
-        guardadoExitoso.value = true
-    }
-}
-
-function reiniciar() {
-    form.reset()
-    form.clearErrors()
-    guardadoExitoso.value = false
-    payloadEnviado.value = null
+const guardarNuevaVariedadCatalogo = () => {
+  formVariedad.post(route('catalogo-variedades.store'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      modalNuevaVariedad.value = false
+      formVariedad.reset()
+    },
+  })
 }
 </script>
 
 <template>
-    <Head title="Nueva Variedad - Catálogo Genético - CultivoOS" />
+  <Head title="Alta de Cultivo & Lote Productivo" />
 
-    <div class="min-h-screen bg-slate-50 font-sans flex flex-col justify-between text-slate-900 antialiased selection:bg-emerald-500 selection:text-white">
-        <!-- HEADER SUPERIOR -->
-        <header class="bg-white border-b border-slate-200/80 px-6 sm:px-8 py-4 flex justify-between items-center shrink-0 sticky top-0 z-30 shadow-xs">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 text-white shrink-0">
-                    <!-- Icono SVG: Hoja Genética -->
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight text-slate-800 uppercase flex items-center gap-2">
-                        Cultivo<span class="text-emerald-600">OS</span>
-                        <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                            Catálogo
-                        </span>
-                    </h1>
-                    <p class="text-xs text-slate-400 font-medium">Gestión de Variedades y Linaje Botánico</p>
-                </div>
+  <div class="min-h-screen bg-slate-900 text-slate-100 p-4 sm:p-6 lg:p-8 font-sans">
+    <div class="max-w-4xl mx-auto space-y-6">
+      
+      <!-- HEADER -->
+      <div class="flex items-center justify-between bg-slate-950 p-6 rounded-3xl border border-slate-800 shadow-xl">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
+            🌱
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-extrabold text-white">Alta de Nuevo Cultivo</h1>
+              <span class="text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">
+                App\Models\Cultivo
+              </span>
             </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Módulo integrado con CatalogoVariedad, CultivoVariedad y Generación de Plantas
+            </p>
+          </div>
+        </div>
 
-            <div class="flex items-center gap-3 text-xs font-semibold">
-                <span class="hidden sm:flex items-center gap-1.5 text-slate-500 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200">
-                    <!-- Icono SVG: Base de Datos / Laravel Model -->
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                    </svg>
-                    CatalogoVariedad (UUID)
+        <Link
+          :href="route('dashboard')"
+          class="text-xs font-bold text-slate-400 hover:text-white px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 transition-colors"
+        >
+          &larr; Volver al Dashboard
+        </Link>
+      </div>
+
+      <!-- FORMULARIO PRINCIPAL -->
+      <div class="bg-slate-950 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+        
+        <!-- PESTAÑAS -->
+        <div class="flex border-b border-slate-800 bg-slate-900/50 px-6 gap-4 text-xs font-bold pt-3 overflow-x-auto">
+          <button
+            type="button"
+            @click="tabActiva = 'DATOS_CULTIVO'"
+            :class="[
+              'pb-3 px-3 border-b-2 flex items-center gap-2 transition-all',
+              tabActiva === 'DATOS_CULTIVO'
+                ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            ]"
+          >
+            🏢 1. Cultivo & Sala
+          </button>
+
+          <button
+            type="button"
+            @click="tabActiva = 'VARIEDADES'"
+            :class="[
+              'pb-3 px-3 border-b-2 flex items-center gap-2 transition-all',
+              tabActiva === 'VARIEDADES'
+                ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            ]"
+          >
+            🧬 2. Genéticas ({{ form.variedades.length }})
+          </button>
+
+          <button
+            type="button"
+            @click="tabActiva = 'PLANTAS'"
+            :class="[
+              'pb-3 px-3 border-b-2 flex items-center gap-2 transition-all',
+              tabActiva === 'PLANTAS'
+                ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            ]"
+          >
+            🪴 3. Canopia & Plantas ({{ totalPlantas }})
+          </button>
+        </div>
+
+        <form @submit.prevent="submit" class="p-6 space-y-6 text-xs font-semibold">
+          
+          <!-- TAB 1: DATOS CULTIVO -->
+          <div v-if="tabActiva === 'DATOS_CULTIVO'" class="space-y-4">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">
+                  Nombre del Cultivo / Lote <span class="text-rose-400">*</span>
+                </label>
+                <input
+                  v-model="form.nombre"
+                  type="text"
+                  placeholder="Ej. Lote Principal - Floración 2026"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none"
+                />
+                <span v-if="form.errors.nombre" class="text-rose-400 text-[11px] mt-1 block">
+                  {{ form.errors.nombre }}
                 </span>
+              </div>
+
+              <div>
+                <label class="block text-slate-400 uppercase text-[11px] mb-1 flex justify-between">
+                  <span>Duración Estimada</span>
+                  <span class="text-[10px] text-slate-500">decimal:2</span>
+                </label>
+                <div class="relative">
+                  <input
+                    v-model="form.duracion_estimada"
+                    type="number"
+                    step="0.5"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none pr-12"
+                  />
+                  <span class="absolute right-3 top-2.5 text-slate-500">días</span>
+                </div>
+                <span v-if="form.errors.duracion_estimada" class="text-rose-400 text-[11px] mt-1 block">
+                  {{ form.errors.duracion_estimada }}
+                </span>
+              </div>
             </div>
-        </header>
 
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="flex-1 p-4 sm:p-8 flex flex-col justify-center">
-            <div class="max-w-4xl mx-auto w-full">
+            <!-- Sala & Fotoperíodo -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">
+                  Sala de Cultivo (sala_id) <span class="text-rose-400">*</span>
+                </label>
+                <select
+                  v-model="form.sala_id"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none cursor-pointer"
+                >
+                  <option v-for="s in props.salas" :key="s.id" :value="s.id">
+                    {{ s.nombre }} ({{ s.codigo }}) &bull; Capacidad: {{ s.capacidad_macetas }} macetas
+                  </option>
+                </select>
+                <span v-if="form.errors.sala_id" class="text-rose-400 text-[11px] mt-1 block">
+                  {{ form.errors.sala_id }}
+                </span>
+              </div>
 
-                <!-- ENCABEZADO DE SECCIÓN -->
-                <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Formulario de Registro Único
-                        </div>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Nueva Variedad en Catálogo
-                        </h2>
-                        <p class="text-sm text-slate-500 mt-0.5">
-                            Completá la información botánica, banco productor y ciclo de floración para alimentar los cultivos futuros.
-                        </p>
-                    </div>
+              <div>
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">Fotoperíodo</label>
+                <input
+                  v-model="form.fotoperiodo"
+                  type="text"
+                  placeholder="18/6 o 12/12"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold text-center focus:border-emerald-500 outline-none"
+                />
+              </div>
+            </div>
 
-                    <!-- Badge de HasUuids -->
-                    <div class="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-2xl border border-slate-200 shadow-xs text-xs self-start sm:self-auto font-mono text-slate-600">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span>PK: HasUuids</span>
-                    </div>
+            <!-- Fase, Estado y Responsable -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">
+                  Fase Inicial (fase_id) <span class="text-rose-400">*</span>
+                </label>
+                <select
+                  v-model="form.fase_id"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none cursor-pointer"
+                >
+                  <option v-for="f in props.fases" :key="f.id" :value="f.id">
+                    {{ f.nombre }}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">
+                  Estado (estado_cultivo_id) <span class="text-rose-400">*</span>
+                </label>
+                <select
+                  v-model="form.estado_cultivo_id"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none cursor-pointer"
+                >
+                  <option v-for="est in props.estados" :key="est.id" :value="est.id">
+                    {{ est.nombre }}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-slate-400 uppercase text-[11px] mb-1">
+                  Usuario Responsable <span class="text-rose-400">*</span>
+                </label>
+                <select
+                  v-model="form.usuario_responsable_id"
+                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 outline-none cursor-pointer"
+                >
+                  <option v-for="u in props.usuarios" :key="u.id" :value="u.id">
+                    {{ u.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Descripción -->
+            <div>
+              <label class="block text-slate-400 uppercase text-[11px] mb-1">Descripción / Bitácora</label>
+              <textarea
+                v-model="form.descripcion"
+                rows="2"
+                placeholder="Observaciones iniciales del lote..."
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-white focus:border-emerald-500 outline-none"
+              ></textarea>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button
+                type="button"
+                @click="tabActiva = 'VARIEDADES'"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all"
+              >
+                Continuar a Genéticas &rarr;
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 2: VARIEDADES ASIGNADAS -->
+          <div v-if="tabActiva === 'VARIEDADES'" class="space-y-4">
+            <div class="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <div>
+                <h3 class="font-extrabold text-white text-xs uppercase tracking-wider">
+                  Variedades Genéticas en este Cultivo (CultivoVariedad)
+                </h3>
+                <p class="text-[11px] text-slate-400">
+                  Lotes mono o multi-varietales asignados a este cultivo
+                </p>
+              </div>
+
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="modalNuevaVariedad = true"
+                  class="px-3 py-1.5 bg-purple-950 text-purple-300 border border-purple-800 rounded-xl text-xs font-bold hover:bg-purple-900 transition-all"
+                >
+                  + Nueva Variedad en Catálogo
+                </button>
+                <button
+                  type="button"
+                  @click="agregarVariedad"
+                  class="px-3 py-1.5 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-900 transition-all"
+                >
+                  + Agregar Variedad
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div
+                v-for="(v, idx) in form.variedades"
+                :key="idx"
+                class="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3"
+              >
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                  <span class="font-extrabold text-emerald-400">
+                    Línea #{{ idx + 1 }}
+                  </span>
+                  <button
+                    v-if="form.variedades.length > 1"
+                    type="button"
+                    @click="removerVariedad(idx)"
+                    class="text-rose-400 hover:text-rose-300 text-xs font-bold"
+                  >
+                    Eliminar
+                  </button>
                 </div>
 
-                <!-- ALERTA DE ÉXITO -->
-                <div v-if="guardadoExitoso" class="mb-6 bg-emerald-50 border-2 border-emerald-500/30 rounded-3xl p-6 shadow-lg shadow-emerald-500/5">
-                    <div class="flex items-start gap-4">
-                        <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-base font-bold text-emerald-950">¡Variedad Registrada con Éxito!</h3>
-                            <p class="text-xs text-emerald-800 mt-1">
-                                Los datos fueron formateados según el modelo <code class="font-mono bg-emerald-100/80 px-1 py-0.5 rounded font-bold">CatalogoVariedad</code> y vinculados a su tipo genético.
-                            </p>
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div class="sm:col-span-5">
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">
+                      Catálogo Variedad (catalogo_variedad_id)
+                    </label>
+                    <select
+                      v-model="v.catalogo_variedad_id"
+                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold"
+                    >
+                      <option v-for="cv in props.catalogoVariedades" :key="cv.id" :value="cv.id">
+                        {{ cv.nombre }} &bull; {{ cv.banco }} ({{ cv.dias_ciclo }}d)
+                      </option>
+                    </select>
+                  </div>
 
-                            <div v-if="payloadEnviado" class="mt-3 p-3 bg-white/80 rounded-xl border border-emerald-200 text-xs font-mono text-slate-700">
-                                <div class="font-bold text-emerald-900 mb-1">Payload enviado:</div>
-                                <pre class="overflow-x-auto text-[11px]">{{ JSON.stringify(payloadEnviado, null, 2) }}</pre>
-                            </div>
+                  <div class="sm:col-span-3">
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">
+                      Cantidad Plantas (decimal:2)
+                    </label>
+                    <input
+                      v-model.number="v.cantidad_plantas"
+                      type="number"
+                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold text-center"
+                    />
+                  </div>
 
-                            <div class="mt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    @click="reiniciar"
-                                    class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs cursor-pointer"
-                                >
-                                    Registrar Otra Variedad
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                  <div class="sm:col-span-4">
+                    <label class="block text-slate-400 text-[10px] uppercase mb-1">
+                      Fecha Inicio (fecha_inicio)
+                    </label>
+                    <input
+                      v-model="v.fecha_inicio"
+                      type="date"
+                      class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold"
+                    />
+                  </div>
                 </div>
-
-                <!-- CARD PRINCIPAL DEL FORMULARIO -->
-                <form @submit.prevent="submit" class="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 sm:p-10 relative overflow-hidden space-y-8">
-                    <!-- Indicador visual lateral verde -->
-                    <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
-
-                    <!-- ========================================================= -->
-                    <!-- SECCIÓN 1: IDENTIFICACIÓN PRINCIPAL Y BANCO              -->
-                    <!-- ========================================================= -->
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                            <!-- Icono SVG: Tag / Identificación -->
-                            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                </svg>
-                            </div>
-                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                                1. Identificación y Origen
-                            </h3>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <!-- NOMBRE -->
-                            <div>
-                                <label for="nombre" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
-                                    Nombre de la Variedad <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input
-                                        id="nombre"
-                                        v-model="form.nombre"
-                                        type="text"
-                                        placeholder="Ej. Amnesia Haze, Gorilla Glue #4, Gelato 33"
-                                        class="w-full bg-slate-50 border rounded-2xl px-4 py-3.5 text-sm font-semibold text-slate-800 outline-none transition-all"
-                                        :class="form.errors.nombre ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'"
-                                    />
-                                    <div class="absolute right-3.5 top-3.5 text-slate-400 pointer-events-none">
-                                        <!-- Icono SVG: Hoja -->
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <p v-if="form.errors.nombre" class="mt-1.5 text-xs font-semibold text-red-500 ml-1">
-                                    {{ form.errors.nombre }}
-                                </p>
-                            </div>
-
-                            <!-- BANCO DE SEMILLAS -->
-                            <div>
-                                <label for="banco" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">
-                                    Banco de Semillas / Breeder
-                                </label>
-                                <div class="relative">
-                                    <input
-                                        id="banco"
-                                        v-model="form.banco"
-                                        type="text"
-                                        placeholder="Ej. Royal Queen Seeds, Barney's Farm, Clon Élite"
-                                        class="w-full bg-slate-50 border rounded-2xl px-4 py-3.5 text-sm font-medium text-slate-800 outline-none transition-all"
-                                        :class="form.errors.banco ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'"
-                                    />
-                                    <div class="absolute right-3.5 top-3.5 text-slate-400 pointer-events-none">
-                                        <!-- Icono SVG: Edificio / Breeder -->
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <p v-if="form.errors.banco" class="mt-1.5 text-xs font-semibold text-red-500 ml-1">
-                                    {{ form.errors.banco }}
-                                </p>
-
-                                <!-- Sugerencias rápidas de bancos -->
-                                <div class="mt-2 flex flex-wrap gap-1.5 items-center">
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Populares:</span>
-                                    <button
-                                        v-for="b in bancosSugeridos.slice(0, 4)"
-                                        :key="b"
-                                        type="button"
-                                        @click="setBanco(b)"
-                                        class="text-[10px] font-semibold bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 px-2 py-0.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                                    >
-                                        {{ b }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========================================================= -->
-                    <!-- SECCIÓN 2: TIPO DE VARIEDAD GENÉTICA                     -->
-                    <!-- ========================================================= -->
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div class="flex items-center gap-2">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                    <!-- Icono SVG: ADN / Linaje -->
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                    </svg>
-                                </div>
-                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                                    2. Clasificación Genética <span class="text-red-500">*</span>
-                                </h3>
-                            </div>
-                            <span v-if="tipoSeleccionado" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
-                                {{ tipoSeleccionado.proporcion || tipoSeleccionado.nombre }}
-                            </span>
-                        </div>
-
-                        <!-- Selector visual interactivo de tipos -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                            <div
-                                v-for="tipo in tiposVariedad"
-                                :key="tipo.id"
-                                @click="seleccionarTipo(tipo.id)"
-                                class="p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between text-left relative"
-                                :class="[
-                                    form.tipo_variedad_id === tipo.id
-                                        ? 'bg-emerald-50/50 border-emerald-500 shadow-md shadow-emerald-500/10'
-                                        : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                ]"
-                            >
-                                <div class="flex items-start justify-between gap-2 mb-2">
-                                    <div class="flex items-center gap-2">
-                                        <div
-                                            class="w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs"
-                                            :class="form.tipo_variedad_id === tipo.id ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'"
-                                        >
-                                            <svg v-if="tipo.categoria === 'SATIVA'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                                            <svg v-else-if="tipo.categoria === 'INDICA'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                                            <svg v-else-if="tipo.categoria === 'AUTOMATICA'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                            <svg v-else-if="tipo.categoria === 'CBD'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                                        </div>
-                                        <span class="text-xs font-bold text-slate-800">{{ tipo.nombre }}</span>
-                                    </div>
-                                    <div
-                                        class="w-4 h-4 rounded-full border flex items-center justify-center"
-                                        :class="form.tipo_variedad_id === tipo.id ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white'"
-                                    >
-                                        <svg v-if="form.tipo_variedad_id === tipo.id" class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
-                                    {{ tipo.descripcion }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <p v-if="form.errors.tipo_variedad_id" class="mt-1 text-xs font-semibold text-red-500 ml-1">
-                            {{ form.errors.tipo_variedad_id }}
-                        </p>
-                    </div>
-
-                    <!-- ========================================================= -->
-                    <!-- SECCIÓN 3: DÍAS DE CICLO (DECIMAL:2)                      -->
-                    <!-- ========================================================= -->
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                <!-- Icono SVG: Reloj / Calendario -->
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                                3. Duración del Ciclo de Floración
-                            </h3>
-                        </div>
-
-                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-                                <div class="md:col-span-6">
-                                    <label for="dias_ciclo" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                                        Días Estimados de Ciclo (decimal:2)
-                                    </label>
-                                    <div class="relative">
-                                        <input
-                                            id="dias_ciclo"
-                                            v-model.number="form.dias_ciclo"
-                                            type="number"
-                                            step="0.5"
-                                            min="0"
-                                            max="200"
-                                            placeholder="Ej. 65.00"
-                                            class="w-full bg-white border rounded-2xl px-4 py-3 text-lg font-bold text-slate-800 outline-none transition-all"
-                                            :class="form.errors.dias_ciclo ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'"
-                                        />
-                                        <span class="absolute right-4 top-3.5 text-xs font-bold text-slate-400 uppercase">
-                                            Días
-                                        </span>
-                                    </div>
-                                    <p v-if="form.errors.dias_ciclo" class="mt-1.5 text-xs font-semibold text-red-500 ml-1">
-                                        {{ form.errors.dias_ciclo }}
-                                    </p>
-                                </div>
-
-                                <!-- Conversor / Semanas Calculadas -->
-                                <div class="md:col-span-6 flex flex-col justify-center bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                        Equivalencia en Semanas
-                                    </div>
-                                    <div v-if="form.dias_ciclo && form.dias_ciclo > 0" class="flex items-baseline gap-2">
-                                        <span class="text-2xl font-extrabold text-emerald-700">
-                                            ~{{ semanasCalculadas }}
-                                        </span>
-                                        <span class="text-xs font-semibold text-slate-500">
-                                            semanas de floración ({{ form.dias_ciclo }} días)
-                                        </span>
-                                    </div>
-                                    <div v-else class="text-xs text-slate-400 italic">
-                                        Ingresá los días para calcular las semanas estimadas.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Botones rápidos de días -->
-                            <div class="mt-4 pt-3 border-t border-slate-200/60 flex flex-wrap items-center gap-2">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Presets Comunes:</span>
-                                <button
-                                    v-for="preset in diasPresets"
-                                    :key="preset.dias"
-                                    type="button"
-                                    @click="setDias(preset.dias)"
-                                    class="text-xs font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer"
-                                    :class="form.dias_ciclo === preset.dias ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'"
-                                >
-                                    {{ preset.label }}
-                                    <span class="text-[10px] opacity-75 font-normal ml-1">({{ preset.nota }})</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ========================================================= -->
-                    <!-- SECCIÓN 4: DESCRIPCIÓN & NOTAS BOTÁNICAS                  -->
-                    <!-- ========================================================= -->
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div class="flex items-center gap-2">
-                                <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                    <!-- Icono SVG: Notas / Documento -->
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                                    4. Descripción y Perfil de la Planta
-                                </h3>
-                            </div>
-                            <span class="text-[11px] font-semibold text-slate-400">
-                                {{ form.descripcion?.length || 0 }} caracteres
-                            </span>
-                        </div>
-
-                        <div>
-                            <textarea
-                                id="descripcion"
-                                v-model="form.descripcion"
-                                rows="3"
-                                placeholder="Notas de aroma, perfil terpénico (mirceno, limoneno, cariofileno), resistencia a plagas o requerimientos nutricionales..."
-                                class="w-full bg-slate-50 border rounded-2xl px-4 py-3 text-sm text-slate-800 outline-none transition-all leading-relaxed"
-                                :class="form.errors.descripcion ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'"
-                            ></textarea>
-                            <p v-if="form.errors.descripcion" class="mt-1 text-xs font-semibold text-red-500 ml-1">
-                                {{ form.errors.descripcion }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- ========================================================= -->
-                    <!-- ACCIONES DEL FORMULARIO                                  -->
-                    <!-- ========================================================= -->
-                    <div class="pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-between gap-4">
-                        <button
-                            type="button"
-                            @click="reiniciar"
-                            class="w-full sm:w-auto px-5 py-3 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                        >
-                            Limpiar Formulario
-                        </button>
-
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white px-8 py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
-                        >
-                            <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span>{{ form.processing ? 'Guardando en Base de Datos...' : 'Guardar Variedad en Catálogo' }}</span>
-                        </button>
-                    </div>
-                </form>
-
+              </div>
             </div>
-        </main>
 
-        <!-- FOOTER -->
-        <footer class="bg-white border-t border-slate-200/80 px-6 py-4 text-center text-xs text-slate-400 shrink-0">
-            CultivoOS &bull; Módulo de Catálogo Genético &bull; Laravel Eloquent + Inertia Vue 3
-        </footer>
+            <!-- Resumen de plantas y capacidad -->
+            <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center">
+              <div>
+                <span class="text-slate-400 block text-[11px]">Total Plantas Asignadas:</span>
+                <span class="text-lg font-black text-emerald-400">{{ totalPlantas }} plantas</span>
+              </div>
+
+              <div class="text-right">
+                <span class="text-slate-400 block text-[11px]">Capacidad Sala:</span>
+                <span :class="excedeCapacidad ? 'text-amber-400 font-bold' : 'text-slate-200 font-bold'">
+                  {{ salaSeleccionada?.capacidad_macetas || 'N/A' }} macetas
+                </span>
+              </div>
+            </div>
+
+            <div class="flex justify-between pt-2">
+              <button
+                type="button"
+                @click="tabActiva = 'DATOS_CULTIVO'"
+                class="text-slate-400 hover:text-white font-bold"
+              >
+                &larr; Volver
+              </button>
+              <button
+                type="button"
+                @click="tabActiva = 'PLANTAS'"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all"
+              >
+                Ver Desglose de Plantas &rarr;
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 3: PLANTAS INDIVIDUALES -->
+          <div v-if="tabActiva === 'PLANTAS'" class="space-y-4">
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+              <h3 class="font-extrabold text-white text-xs uppercase tracking-wider">
+                Generador de Identificadores (App\Models\Planta)
+              </h3>
+              <p class="text-[11px] text-slate-400 mt-1">
+                Se crearán <strong>{{ totalPlantas }} registros individuales de Planta</strong> vinculados a su CultivoVariedad con código de trazabilidad único.
+              </p>
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                @click="tabActiva = 'VARIEDADES'"
+                class="text-slate-400 hover:text-white font-bold"
+              >
+                &larr; Volver a Genéticas
+              </button>
+
+              <button
+                type="submit"
+                :disabled="form.processing"
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-8 py-3 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              >
+                {{ form.processing ? 'Guardando en Base de Datos...' : 'Guardar Cultivo Completo' }}
+              </button>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
     </div>
+  </div>
 </template>

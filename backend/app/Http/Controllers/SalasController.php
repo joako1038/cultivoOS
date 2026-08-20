@@ -27,6 +27,16 @@ class SalasController extends Controller
 }
 
 
+    public function show()
+{
+    return Inertia::render('Salas/Creates', [
+        'tiposSala' => TipoSala::orderBy('nombre')->get(),
+        'estadosSala' => EstadoSala::orderBy('nombre')->get(),
+    ]);
+}
+
+
+
     //return Inertia::render('Organizaciones/Create');
     public function store(Request $request)
 {

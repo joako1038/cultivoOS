@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\OrganizacionController;
 use App\Http\Controllers\SalasController;
+use App\Http\Controllers\CultivosController;
+
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CatalogoVariedadController;
 
@@ -48,12 +50,19 @@ Route::resource('dashboard1', DashboardController::class);
     Route::get('/salas/creates', [SalasController::class, 'creates'])
         ->name('salas.creates');
 
+        Route::get('/salas/{sala}', [SalaController::class, 'show'])
+    ->name('salas.show');
+
+    
+    Route::get('/salas/creates', [SalasController::class, 'creates'])
+        ->name('cultivos.show');    
+
     Route::post('/salas', [SalasController::class, 'store'])
         ->name('organizaciones.store');
 
     //Cultivos
 
-    Route::get('/cultivos/create', [SalasController::class, 'create'])
+    Route::get('/cultivos/create', [CultivosController::class, 'create'])
         ->name('cultivos.create');
 
     Route::post('/cultivos', [SalasController::class, 'store'])
