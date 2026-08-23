@@ -14,9 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
-class CultivosController extends Controller
+class CultivoController extends Controller
 {
- 
     /**
      * Muestra el formulario para crear un nuevo cultivo
      */
@@ -74,14 +73,14 @@ class CultivosController extends Controller
             $plantaGlobalIndex = 1;
 
             // 2. Crear las Variedades Asignadas (App\Models\CultivoVariedad)
-            // Relación jerárquica: Cultivo -> CultivoVariedad -> CatalogoVariedad
             foreach ($validated['variedades'] as $vData) {
                 $cultivoVariedad = CultivoVariedad::create([
-                    'cultivo_id' => $cultivo->id,
-                    'catalogo_variedad_id' => $vData['catalogo_variedad_id'],
+                    'descripcion' => $vData['descripcion'] ?? null,
                     'cantidad_plantas' => $vData['cantidad_plantas'],
                     'fecha_inicio' => $vData['fecha_inicio'],
-                    'descripcion' => $vData['descripcion'] ?? null,
+                    'catalogo_variedad_id' => $vData['catalogo_variedad_id'],
+                    // Si tu tabla cultivo_variedads tiene cultivo_id:
+                    // 'cultivo_id' => $cultivo->id,
                 ]);
 
                 // 3. Generar las Plantas Individuales (App\Models\Planta)
@@ -92,8 +91,8 @@ class CultivosController extends Controller
                     for ($i = 1; $i <= $cantidad; $i++) {
                         Planta::create([
                             'codigo_planta' => sprintf('PLT-%s-%03d', $prefijo, $i),
-                            'cultivo_id' => $cultivo->id,
                             'cultivo_variedad_id' => $cultivoVariedad->id,
+                            'cultivo_id' => $cultivo->id,
                             'numero_maceta' => $plantaGlobalIndex,
                             'salud' => 'OPTIMO',
                             'estado' => 'EN_DESARROLLO',
@@ -109,7 +108,7 @@ class CultivosController extends Controller
         });
 
         return redirect()->route('cultivos.show', $cultivo->id)
-            ->with('success', 'Cultivo, variedades y plantas creados exitosamente.');
+            ->with('success', 'Cultivo y plantas creados exitosamente.');
     }
 
     /**
@@ -118,15 +117,10 @@ class CultivosController extends Controller
     public function show(string $id)
     {
         $cultivo = Cultivo::with([
-            'sala.equipamientos',
+            'sala',
             'fase',
             'estadoCultivo',
             'usuarioResponsable',
-            'cultivoVariedades.catalogoVariedad.tipoVariedad',
-            'cultivoVariedades.plantas',
-            'equipamientos',
-            'configuracionRiego',
-            'planificaciones.tasks',
             'registros' => fn($q) => $q->latest()->limit(10),
             'eventos' => fn($q) => $q->latest()->limit(10),
             'timeLines',
@@ -137,11 +131,3 @@ class CultivosController extends Controller
         ]);
     }
 }
-
-
-
-
-/**
- * 
- * 
- */

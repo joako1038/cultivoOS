@@ -18,7 +18,8 @@ class DatabaseSeeder extends Seeder
      $this->call([
         //TipoEquipamientoSeeder::class,
         //TipoSalaSeeder::class,
-        EstadoSalaSeeder::class,
-    ]);
+       // EstadoSalaSeeder::class,
+    CultivoOSSeeder::class,
+       ]);
     }
 }

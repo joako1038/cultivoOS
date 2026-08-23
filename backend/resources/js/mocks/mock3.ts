@@ -61,81 +61,34 @@ export const MOCK_CULTIVOS = [
   {
     id: 'cultivo-01',
     codigo: 'LOT-2026-GG4',
-    nombre: 'Lote 04 - Cultivo Multivarietal Sala Flora',
-    nombre_lote: 'Lote 04 - Cultivo Multivarietal Sala Flora',
+    nombre_lote: 'Gorilla Glue #4 - Lote Comercial',
     sala_id: 'sala-001',
     sala_nombre: 'Sala Alfa - Floración Principal',
-    duracion_estimada: 63,
+    variedad_nombre: 'Gorilla Glue #4',
+    banco: "Barney's Farm",
+    tipo_categoria: 'HIBRIDA',
     etapa: 'FLORACION',
     salud: 'OPTIMO',
     semana_actual: 5,
     dias_totales_estimados: 63,
     plantas_totales: 48,
     fotoperiodo: '12/12',
-    cultivoVariedades: [
-      {
-        id: 'cv-001',
-        cultivo_id: 'cultivo-01',
-        catalogo_variedad_id: 'var-001',
-        cantidad_plantas: 32,
-        fecha_inicio: '2026-07-01',
-        descripcion: 'Lote principal de fenotipo GG4-Resina Max',
-        catalogo_variedad: {
-          id: 'var-001',
-          nombre: 'Gorilla Glue #4',
-          banco: "Barney's Farm",
-          dias_ciclo: 63,
-          tipo_variedad: { id: 'tv-01', categoria: 'HIBRIDA', nombre: 'Híbrida' }
-        }
-      },
-      {
-        id: 'cv-001b',
-        cultivo_id: 'cultivo-01',
-        catalogo_variedad_id: 'var-002',
-        cantidad_plantas: 16,
-        fecha_inicio: '2026-07-01',
-        descripcion: 'Sector de prueba multivarietal con Amnesia Haze',
-        catalogo_variedad: {
-          id: 'var-002',
-          nombre: 'Amnesia Haze',
-          banco: 'Royal Queen Seeds',
-          dias_ciclo: 84,
-          tipo_variedad: { id: 'tv-02', categoria: 'SATIVA', nombre: 'Sativa' }
-        }
-      }
-    ],
   },
   {
     id: 'cultivo-02',
     codigo: 'LOT-2026-AMN',
-    nombre: 'Amnesia Haze - Lote Seleccionado',
     nombre_lote: 'Amnesia Haze - Lote Seleccionado',
     sala_id: 'sala-002',
     sala_nombre: 'Sala Beta - Vegetación & Madres',
-    duracion_estimada: 84,
+    variedad_nombre: 'Amnesia Haze',
+    banco: 'Royal Queen Seeds',
+    tipo_categoria: 'SATIVA',
     etapa: 'VEGETATIVO',
     salud: 'OPTIMO',
     semana_actual: 3,
-    dias_totales_estimados: 84,
+    dias_totales_estimados: 75,
     plantas_totales: 32,
     fotoperiodo: '18/6',
-    cultivoVariedades: [
-      {
-        id: 'cv-002',
-        cultivo_id: 'cultivo-02',
-        catalogo_variedad_id: 'var-002',
-        cantidad_plantas: 32,
-        fecha_inicio: '2026-07-28',
-        descripcion: 'Esquejes seleccionados',
-        catalogo_variedad: {
-          id: 'var-002',
-          nombre: 'Amnesia Haze',
-          banco: 'Royal Queen Seeds',
-          dias_ciclo: 84,
-          tipo_variedad: { id: 'tv-02', categoria: 'SATIVA', nombre: 'Sativa' }
-        }
-      }
-    ],
   },
 ];
 

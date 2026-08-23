@@ -69,7 +69,7 @@ const form = useForm({
   generar_plantas_automaticas: true,
   variedades: [
     {
-catalogo_variedad_id: props.catalogoVariedades?.[0]?.id || '',
+      catalogo_variedad_id: props.catalogoVariedades[0]?.id || '',
       cantidad_plantas: 36,
       fecha_inicio: new Date().toISOString().split('T')[0],
       descripcion: 'Esquejes seleccionados de 1ra generación',

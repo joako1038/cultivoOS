@@ -13,47 +13,81 @@ use Inertia\Inertia;
 
 class OrganizacionController extends Controller
 {
+    /**
+     * Muestra la vista principal de organizaciones para el usuario autenticado.
+     */
+    public function create(Request $request)
+    {
+        $usuario = Auth::user();
 
-    public function create()
-{
-    return Inertia::render('Organizaciones/Create');
-}
+        // Cargar organizaciones asociadas al usuario con sus roles y salas
+        $organizaciones = Organizacion::with(['salas', 'usuariosOrganizaciones.rol', 'usuariosOrganizaciones.usuario'])
+            ->whereHas('usuariosOrganizaciones', function ($q) use ($usuario) {
+                $q->where('usuario_id', $usuario->id);
+            })
+            ->orWhere('id', session('organizacion_activa_id'))
+            ->get();
 
+        $roles = Rol::all();
+        $organizacionActivaId = session('organizacion_activa_id', $organizaciones->first()?->id);
+
+        return Inertia::render('Organizaciones/Index', [
+            'organizaciones'       => $organizaciones,
+            'organizacionActivaId' => $organizacionActivaId,
+            'roles'                => $roles,
+            'usuarioActual'        => $usuario,
+        ]);
+    }
+
+    /**
+     * Guarda una nueva organización y asocia automáticamente al usuario con su rol.
+     */
     public function store(Request $request)
     {
-              $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:100'],
-            'descripcion' => ['nullable', 'string'],
+        $validated = $request->validate([
+            'nombre'       => 'required|string|min:3|max:255',
+            'descripcion'  => 'nullable|string|max:1000',
+            'localizacion' => 'required|string|min:3|max:255',
+            'rol_id'       => 'required|exists:rols,id',
         ]);
 
-       $organizacion = Organizacion::create($datos);
+        $usuario = Auth::user();
 
-        $rolOwner = Rol::where('nombre', 'OWNER')->firstOrFail(); 
+        DB::transaction(function () use ($validated, $usuario, &$organizacion) {
+            // 1. Crear Organización
+            $organizacion = Organizacion::create([
+                'nombre'       => $validated['nombre'],
+                'descripcion'  => $validated['descripcion'] ?? '',
+                'localizacion' => $validated['localizacion'],
+            ]);
 
-        $estadoActivo = EstadoUsuarioOrganizacion::where('nombre', 'ACTIVO')->firstOrFail();
+            // 2. Asociar al usuario creador con el rol en la pivot
+            UsuarioOrganizacion::create([
+                'usuario_id'      => $usuario->id,
+                'organizacion_id' => $organizacion->id,
+                'rol_id'          => $validated['rol_id'],
+                'es_activo'       => true,
+            ]);
 
-        UsuarioOrganizacion::create([
-        'usuario_id' => $request->user()->id,
-        'organizacion_id' => $organizacion->id,
-        'rol_id' => $rolOwner->id,
-        'estado_usuario_organizacion_id' => $estadoActivo->id,
-        'es_propietario' => true,
-]);
+            // 3. Establecer como activa en sesión
+            session(['organizacion_activa_id' => $organizacion->id]);
+        });
 
-        $cantidadOrganizaciones= UsuarioOrganizacion::where('usuario_id', $request->user()->id)->count();
-       
-        if ($cantidadOrganizaciones>1) {
-            // redirije a seleccionar org
+        return redirect()->back()->with('success', 'Organización creada y activada exitosamente.');
+    }
 
-        }else{
-            session([
-    'organizacion_id' => $organizacion->id
+    /**
+     * Conmuta la organización activa en la sesión del usuario.
+     */
+    public function switchActiva(Request $request)
+    {
+        $request->validate([
+            'organizacion_id' => 'required|exists:organizacions,id',
+        ]);
 
-    ]);
-     return redirect()->route('dashboard');
-        }
-       
-  
+        session(['organizacion_activa_id' => $request->organizacion_id]);
+
+        return redirect()->back()->with('success', 'Entorno de organización cambiado.');
     }
 
 }

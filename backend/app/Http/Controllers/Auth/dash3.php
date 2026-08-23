@@ -1,21 +1,22 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace AppHttpControllers;
 
-use App\Models\Registro;
-use App\Models\Planificacion;
-use App\Models\Evento;
-use App\Models\TipoPlanificacion;
-use App\Models\EstadoPlanificacion;
-use App\Models\TipoEvento;
-use App\Models\EstadoEvento;
-use App\Models\TimeLine;
-use App\Models\Sala;
-use App\Models\Cultivo;
-use App\Models\CatalogoVariedad;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
+use AppModelsSala;
+use AppModelsCultivo;
+use AppModelsCatalogoVariedad;
+use AppModelsRegistro;
+use AppModelsplanificacion;
+use AppModelsEvento;
+use AppModelsTipoPlanificacion;
+use AppModelsEstadoPlanificacion;
+use AppModelsTipoEvento;
+use AppModelsEstadoEvento;
+use AppModelsTimeLine;
+use IlluminateHttpRequest;
+use InertiaInertia;
+use InertiaResponse;
+
 class DashboardController extends Controller
 {
     /**
@@ -32,15 +33,8 @@ class DashboardController extends Controller
             ->orderBy('nombre')
             ->get();
 
-        // 2. Cultivos activos con su jerarquía de variedades y plantas
-        $cultivos = Cultivo::with([
-            'cultivoVariedades.catalogoVariedad.tipoVariedad',
-            'cultivoVariedades.plantas',
-            'sala.equipamientos',
-            'equipamientos',
-            'fase',
-            'estadoCultivo',
-        ])
+        // 2. Cultivos activos
+        $cultivos = Cultivo::with(['catalogoVariedad.tipoVariedad', 'sala'])
             ->where('etapa', '!=', 'FINALIZADO')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -176,7 +170,3 @@ class DashboardController extends Controller
         return redirect()->back()->with('success', 'Planificación registrada con éxito.');
     }
 }
-
-
-
- 

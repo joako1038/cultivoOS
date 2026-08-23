@@ -18,6 +18,7 @@ class Sala extends Model
         'area',
         'altura',
         'volumen',
+        'codigo',
         'posee_intraccion',
         'posee_extraccion',
         'posee_co2',
