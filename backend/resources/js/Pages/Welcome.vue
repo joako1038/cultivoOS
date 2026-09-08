@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 defineProps<{
@@ -8,369 +9,584 @@ defineProps<{
     phpVersion: string;
 }>();
 
-function handleImageError() {
-    document.getElementById('screenshot-container')?.classList.add('!hidden');
-    document.getElementById('docs-card')?.classList.add('!row-span-1');
-    document.getElementById('docs-card-content')?.classList.add('!flex-row');
-    document.getElementById('background')?.classList.add('!hidden');
-}
+// Estado reactivo para el simulador interactivo de la landing
+const pestanaActiva = ref<'telemetria' | 'riego' | 'salas' | 'trazabilidad'>('telemetria');
+const faqAbierto = ref<number | null>(null);
+
+const toggleFaq = (idx: number) => {
+    faqAbierto.value = faqAbierto.value === idx ? null : idx;
+};
 </script>
 
 <template>
-    <Head title="Welcome" />
-    <div class="bg-gray-50 text-black/50 dark:bg-black dark:text-white/50">
-        <img
-            id="background"
-            class="absolute -left-20 top-0 max-w-[877px]"
-            src="https://laravel.com/assets/img/welcome/background.svg"
-        />
-        <div
-            class="relative flex min-h-screen flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white"
-        >
-            <div class="relative w-full max-w-2xl px-6 lg:max-w-7xl">
-                <header
-                    class="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3"
-                >
-                    <div class="flex lg:col-start-2 lg:justify-center">
-                        <svg
-                            class="h-12 w-auto text-white lg:h-16 lg:text-[#FF2D20]"
-                            viewBox="0 0 62 65"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                d="M61.8548 14.6253C61.8778 14.7102 61.8895 14.7978 61.8897 14.8858V28.5615C61.8898 28.737 61.8434 28.9095 61.7554 29.0614C61.6675 29.2132 61.5409 29.3392 61.3887 29.4265L49.9104 36.0351V49.1337C49.9104 49.4902 49.7209 49.8192 49.4118 49.9987L25.4519 63.7916C25.3971 63.8227 25.3372 63.8427 25.2774 63.8639C25.255 63.8714 25.2338 63.8851 25.2101 63.8913C25.0426 63.9354 24.8666 63.9354 24.6991 63.8913C24.6716 63.8838 24.6467 63.8689 24.6205 63.8589C24.5657 63.8389 24.5084 63.8215 24.456 63.7916L0.501061 49.9987C0.348882 49.9113 0.222437 49.7853 0.134469 49.6334C0.0465019 49.4816 0.000120578 49.3092 0 49.1337L0 8.10652C0 8.01678 0.0124642 7.92953 0.0348998 7.84477C0.0423783 7.8161 0.0598282 7.78993 0.0697995 7.76126C0.0884958 7.70891 0.105946 7.65531 0.133367 7.6067C0.152063 7.5743 0.179485 7.54812 0.20192 7.51821C0.230588 7.47832 0.256763 7.43719 0.290416 7.40229C0.319084 7.37362 0.356476 7.35243 0.388883 7.32751C0.425029 7.29759 0.457436 7.26518 0.498568 7.2415L12.4779 0.345059C12.6296 0.257786 12.8015 0.211853 12.9765 0.211853C13.1515 0.211853 13.3234 0.257786 13.475 0.345059L25.4531 7.2415H25.4556C25.4955 7.26643 25.5292 7.29759 25.5653 7.32626C25.5977 7.35119 25.6339 7.37362 25.6625 7.40104C25.6974 7.43719 25.7224 7.47832 25.7523 7.51821C25.7735 7.54812 25.8021 7.5743 25.8196 7.6067C25.8483 7.65656 25.8645 7.70891 25.8844 7.76126C25.8944 7.78993 25.9118 7.8161 25.9193 7.84602C25.9423 7.93096 25.954 8.01853 25.9542 8.10652V33.7317L35.9355 27.9844V14.8846C35.9355 14.7973 35.948 14.7088 35.9704 14.6253C35.9792 14.5954 35.9954 14.5692 36.0053 14.5405C36.0253 14.4882 36.0427 14.4346 36.0702 14.386C36.0888 14.3536 36.1163 14.3274 36.1375 14.2975C36.1674 14.2576 36.1923 14.2165 36.2272 14.1816C36.2559 14.1529 36.292 14.1317 36.3244 14.1068C36.3618 14.0769 36.3942 14.0445 36.4341 14.0208L48.4147 7.12434C48.5663 7.03694 48.7383 6.99094 48.9133 6.99094C49.0883 6.99094 49.2602 7.03694 49.4118 7.12434L61.3899 14.0208C61.4323 14.0457 61.4647 14.0769 61.5021 14.1055C61.5333 14.1305 61.5694 14.1529 61.5981 14.1803C61.633 14.2165 61.6579 14.2576 61.6878 14.2975C61.7103 14.3274 61.7377 14.3536 61.7551 14.386C61.7838 14.4346 61.8 14.4882 61.8199 14.5405C61.8312 14.5692 61.8474 14.5954 61.8548 14.6253ZM59.893 27.9844V16.6121L55.7013 19.0252L49.9104 22.3593V33.7317L59.8942 27.9844H59.893ZM47.9149 48.5566V37.1768L42.2187 40.4299L25.953 49.7133V61.2003L47.9149 48.5566ZM1.99677 9.83281V48.5566L23.9562 61.199V49.7145L12.4841 43.2219L12.4804 43.2194L12.4754 43.2169C12.4368 43.1945 12.4044 43.1621 12.3682 43.1347C12.3371 43.1097 12.3009 43.0898 12.2735 43.0624L12.271 43.0586C12.2386 43.0275 12.2162 42.9888 12.1887 42.9539C12.1638 42.9203 12.1339 42.8916 12.114 42.8567L12.1127 42.853C12.0903 42.8156 12.0766 42.7707 12.0604 42.7283C12.0442 42.6909 12.023 42.656 12.013 42.6161C12.0005 42.5688 11.998 42.5177 11.9931 42.4691C11.9881 42.4317 11.9781 42.3943 11.9781 42.3569V15.5801L6.18848 12.2446L1.99677 9.83281ZM12.9777 2.36177L2.99764 8.10652L12.9752 13.8513L22.9541 8.10527L12.9752 2.36177H12.9777ZM18.1678 38.2138L23.9574 34.8809V9.83281L19.7657 12.2459L13.9749 15.5801V40.6281L18.1678 38.2138ZM48.9133 9.14105L38.9344 14.8858L48.9133 20.6305L58.8909 14.8846L48.9133 9.14105ZM47.9149 22.3593L42.124 19.0252L37.9323 16.6121V27.9844L43.7219 31.3174L47.9149 33.7317V22.3593ZM24.9533 47.987L39.59 39.631L46.9065 35.4555L36.9352 29.7145L25.4544 36.3242L14.9907 42.3482L24.9533 47.987Z"
-                                fill="currentColor"
-                            />
-                        </svg>
+    <Head title="CultivoOS - Sistema Operativo Agronómico de Precisión & Telemetría IoT" />
+
+    <div class="min-h-screen bg-slate-900 text-slate-100 selection:bg-emerald-500 selection:text-white font-sans antialiased overflow-x-hidden">
+        <!-- Gradientes de fondo tecnológicos y orgánicos -->
+        <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[850px] h-[550px] bg-emerald-500/10 rounded-full blur-[140px]"></div>
+            <div class="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[160px]"></div>
+            <div class="absolute bottom-10 -right-40 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[160px]"></div>
+            <!-- Cuadrícula sutil de precisión -->
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
+        </div>
+
+        <!-- BARRA DE NAVEGACIÓN PRINCIPAL -->
+        <header class="relative z-50 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-xl sticky top-0">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                <!-- Marca CultivoOS -->
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-lg shadow-emerald-500/20">
+                        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                            <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8zM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+                            </svg>
+                        </div>
                     </div>
-                    <nav v-if="canLogin" class="-mx-3 flex flex-1 justify-end">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xl font-black tracking-tight text-white">cultivo</span>
+                            <span class="text-xl font-black tracking-tight text-emerald-400">OS</span>
+                            <span class="text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded-md">
+                                Enterprise IoT
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-medium tracking-wide">
+                            
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Enlaces de navegación desktop -->
+                <nav class="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <a href="#salas" class="hover:text-emerald-400 transition-colors">Salas Climatizadas</a>
+                    <a href="#riego" class="hover:text-emerald-400 transition-colors">Gestión Hídrica & VWC</a>
+                    <a href="#telemetria" class="hover:text-emerald-400 transition-colors">Telemetría 24/7</a>
+                    <a href="#roi" class="hover:text-emerald-400 transition-colors">Rentabilidad</a>
+                </nav>
+
+                <!-- Acciones de Acceso y Registro (Rutas de Laravel/Inertia) -->
+                <div v-if="canLogin" class="flex items-center gap-3">
+                    <Link
+                        v-if="$page.props.auth.user"
+                        :href="route('dashboard')"
+                        class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                    >
+                        <span>Panel de Control</span>
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </Link>
+
+                    <template v-else>
                         <Link
-                            v-if="$page.props.auth.user"
-                            :href="route('dashboard')"
-                            class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
+                            :href="route('login')"
+                            class="text-xs font-bold text-slate-300 hover:text-white px-3 py-2 rounded-xl hover:bg-slate-800 transition-all"
                         >
-                            Dashboard
+                            Iniciar Sesión
                         </Link>
 
-                        <template v-else>
-                            <Link
-                                :href="route('login')"
-                                class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                            >
-                                Log in
-                            </Link>
-
-                            <Link
-                                v-if="canRegister"
-                                :href="route('register')"
-                                class="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                            >
-                                Register
-                            </Link>
-                        </template>
-                    </nav>
-                </header>
-
-                <main class="mt-6">
-                    <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
-                        <a
-                            href="https://laravel.com/docs"
-                            id="docs-card"
-                            class="flex flex-col items-start gap-6 overflow-hidden rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] md:row-span-3 lg:p-10 lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
+                        <Link
+                            v-if="canRegister"
+                            :href="route('register')"
+                            class="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 text-xs font-black px-4 py-2.5 rounded-2xl shadow-lg shadow-emerald-500/25 transition-all cursor-pointer"
                         >
-                            <div
-                                id="screenshot-container"
-                                class="relative flex w-full flex-1 items-stretch"
-                            >
-                                <img
-                                    src="https://laravel.com/assets/img/welcome/docs-light.svg"
-                                    alt="Laravel documentation screenshot"
-                                    class="aspect-video h-full w-full flex-1 rounded-[10px] object-cover object-top drop-shadow-[0px_4px_34px_rgba(0,0,0,0.06)] dark:hidden"
-                                    @error="handleImageError"
-                                />
-                                <img
-                                    src="https://laravel.com/assets/img/welcome/docs-dark.svg"
-                                    alt="Laravel documentation screenshot"
-                                    class="hidden aspect-video h-full w-full flex-1 rounded-[10px] object-cover object-top drop-shadow-[0px_4px_34px_rgba(0,0,0,0.25)] dark:block"
-                                />
-                                <div
-                                    class="absolute -bottom-16 -left-16 h-40 w-[calc(100%+8rem)] bg-gradient-to-b from-transparent via-white to-white dark:via-zinc-900 dark:to-zinc-900"
-                                ></div>
-                            </div>
-
-                            <div
-                                class="relative flex items-center gap-6 lg:items-end"
-                            >
-                                <div
-                                    id="docs-card-content"
-                                    class="flex items-start gap-6 lg:flex-col"
-                                >
-                                    <div
-                                        class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16"
-                                    >
-                                        <svg
-                                            class="size-5 sm:size-6"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                fill="#FF2D20"
-                                                d="M23 4a1 1 0 0 0-1.447-.894L12.224 7.77a.5.5 0 0 1-.448 0L2.447 3.106A1 1 0 0 0 1 4v13.382a1.99 1.99 0 0 0 1.105 1.79l9.448 4.728c.14.065.293.1.447.1.154-.005.306-.04.447-.105l9.453-4.724a1.99 1.99 0 0 0 1.1-1.789V4ZM3 6.023a.25.25 0 0 1 .362-.223l7.5 3.75a.251.251 0 0 1 .138.223v11.2a.25.25 0 0 1-.362.224l-7.5-3.75a.25.25 0 0 1-.138-.22V6.023Zm18 11.2a.25.25 0 0 1-.138.224l-7.5 3.75a.249.249 0 0 1-.329-.099.249.249 0 0 1-.033-.12V9.772a.251.251 0 0 1 .138-.224l7.5-3.75a.25.25 0 0 1 .362.224v11.2Z"
-                                            />
-                                            <path
-                                                fill="#FF2D20"
-                                                d="m3.55 1.893 8 4.048a1.008 1.008 0 0 0 .9 0l8-4.048a1 1 0 0 0-.9-1.785l-7.322 3.706a.506.506 0 0 1-.452 0L4.454.108a1 1 0 0 0-.9 1.785H3.55Z"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <div class="pt-3 sm:pt-5 lg:pt-0">
-                                        <h2
-                                            class="text-xl font-semibold text-black dark:text-white"
-                                        >
-                                            Documentation
-                                        </h2>
-
-                                        <p class="mt-4 text-sm/relaxed">
-                                            Laravel has wonderful documentation
-                                            covering every aspect of the
-                                            framework. Whether you are a
-                                            newcomer or have prior experience
-                                            with Laravel, we recommend reading
-                                            our documentation from beginning to
-                                            end.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <svg
-                                    class="size-6 shrink-0 stroke-[#FF2D20]"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.5"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                    />
-                                </svg>
-                            </div>
-                        </a>
-
-                        <a
-                            href="https://laracasts.com"
-                            class="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
-                        >
-                            <div
-                                class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16"
-                            >
-                                <svg
-                                    class="size-5 sm:size-6"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <g fill="#FF2D20">
-                                        <path
-                                            d="M24 8.25a.5.5 0 0 0-.5-.5H.5a.5.5 0 0 0-.5.5v12a2.5 2.5 0 0 0 2.5 2.5h19a2.5 2.5 0 0 0 2.5-2.5v-12Zm-7.765 5.868a1.221 1.221 0 0 1 0 2.264l-6.626 2.776A1.153 1.153 0 0 1 8 18.123v-5.746a1.151 1.151 0 0 1 1.609-1.035l6.626 2.776ZM19.564 1.677a.25.25 0 0 0-.177-.427H15.6a.106.106 0 0 0-.072.03l-4.54 4.543a.25.25 0 0 0 .177.427h3.783c.027 0 .054-.01.073-.03l4.543-4.543ZM22.071 1.318a.047.047 0 0 0-.045.013l-4.492 4.492a.249.249 0 0 0 .038.385.25.25 0 0 0 .14.042h5.784a.5.5 0 0 0 .5-.5v-2a2.5 2.5 0 0 0-1.925-2.432ZM13.014 1.677a.25.25 0 0 0-.178-.427H9.101a.106.106 0 0 0-.073.03l-4.54 4.543a.25.25 0 0 0 .177.427H8.4a.106.106 0 0 0 .073-.03l4.54-4.543ZM6.513 1.677a.25.25 0 0 0-.177-.427H2.5A2.5 2.5 0 0 0 0 3.75v2a.5.5 0 0 0 .5.5h1.4a.106.106 0 0 0 .073-.03l4.54-4.543Z"
-                                        />
-                                    </g>
-                                </svg>
-                            </div>
-
-                            <div class="pt-3 sm:pt-5">
-                                <h2
-                                    class="text-xl font-semibold text-black dark:text-white"
-                                >
-                                    Laracasts
-                                </h2>
-
-                                <p class="mt-4 text-sm/relaxed">
-                                    Laracasts offers thousands of video
-                                    tutorials on Laravel, PHP, and JavaScript
-                                    development. Check them out, see for
-                                    yourself, and massively level up your
-                                    development skills in the process.
-                                </p>
-                            </div>
-
-                            <svg
-                                class="size-6 shrink-0 self-center stroke-[#FF2D20]"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                />
+                            <span>Comenzar Prueba</span>
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
-                        </a>
+                        </Link>
+                    </template>
+                </div>
+            </div>
+        </header>
 
-                        <a
-                            href="https://laravel-news.com"
-                            class="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] transition duration-300 hover:text-black/70 hover:ring-black/20 focus:outline-none focus-visible:ring-[#FF2D20] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:text-white/70 dark:hover:ring-zinc-700 dark:focus-visible:ring-[#FF2D20]"
-                        >
-                            <div
-                                class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16"
-                            >
-                                <svg
-                                    class="size-5 sm:size-6"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <g fill="#FF2D20">
-                                        <path
-                                            d="M8.75 4.5H5.5c-.69 0-1.25.56-1.25 1.25v4.75c0 .69.56 1.25 1.25 1.25h3.25c.69 0 1.25-.56 1.25-1.25V5.75c0-.69-.56-1.25-1.25-1.25Z"
-                                        />
-                                        <path
-                                            d="M24 10a3 3 0 0 0-3-3h-2V2.5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2V20a3.5 3.5 0 0 0 3.5 3.5h17A3.5 3.5 0 0 0 24 20V10ZM3.5 21.5A1.5 1.5 0 0 1 2 20V3a.5.5 0 0 1 .5-.5h14a.5.5 0 0 1 .5.5v17c0 .295.037.588.11.874a.5.5 0 0 1-.484.625L3.5 21.5ZM22 20a1.5 1.5 0 1 1-3 0V9.5a.5.5 0 0 1 .5-.5H21a1 1 0 0 1 1 1v10Z"
-                                        />
-                                        <path
-                                            d="M12.751 6.047h2a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-2A.75.75 0 0 1 12 7.3v-.5a.75.75 0 0 1 .751-.753ZM12.751 10.047h2a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-2A.75.75 0 0 1 12 11.3v-.5a.75.75 0 0 1 .751-.753ZM4.751 14.047h10a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-10A.75.75 0 0 1 4 15.3v-.5a.75.75 0 0 1 .751-.753ZM4.75 18.047h7.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-.75.75h-7.5A.75.75 0 0 1 4 19.3v-.5a.75.75 0 0 1 .75-.753Z"
-                                        />
-                                    </g>
-                                </svg>
+        <!-- SECCIÓN 1: HERO PRINCIPAL DE ALTO IMPACTO -->
+        <section class="relative z-10 pt-16 sm:pt-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="text-center max-w-3xl mx-auto space-y-6">
+                <!-- Badge de Estado Agronómico -->
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>El Estándar Industrial para Cultivo Indoor & R&D</span>
+                </div>
+
+                <!-- Título Primario -->
+                <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1]">
+                    Domina tus <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">Cultivos</span>.<br />
+                    Maximiza tus rendimientos.
+                </h1>
+
+                <!-- Subtítulo comercial -->
+                <p class="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto">
+                    CultivoOS unifica el control ambiental en tiempo real (VPD, CO₂, PAR), gestión hídrica de sustrato/RDWC por pulsos de drenaje, trazabilidad genética por lotes y aislamiento multi-organización en una sola plataforma.
+                </p>
+
+                <!-- Botones de Acción Primaria -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <Link
+                        v-if="canRegister"
+                        :href="route('register')"
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-black px-7 py-3.5 rounded-2xl shadow-xl shadow-emerald-500/30 hover:scale-[1.02] transition-all cursor-pointer"
+                    >
+                        <span>Crear Cuenta de Producción</span>
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </Link>
+
+                    <Link
+                        v-if="canLogin"
+                        :href="route('login')"
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-sm font-bold px-6 py-3.5 rounded-2xl transition-all cursor-pointer"
+                    >
+                        <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <span>Ingresar a mi Organización</span>
+                    </Link>
+                </div>
+
+                <!-- Métricas Rápidas de Confianza -->
+                <div class="pt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto border-t border-slate-800/80">
+                    <div>
+                        <div class="text-2xl font-black text-white">+28%</div>
+                        <div class="text-[11px] text-slate-400 font-semibold uppercase">Rendimiento seco / m²</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-emerald-400">-35%</div>
+                        <div class="text-[11px] text-slate-400 font-semibold uppercase">Ahorro en Fertirriego</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-white">0.02</div>
+                        <div class="text-[11px] text-slate-400 font-semibold uppercase">Precisión VPD (kPa)</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-teal-300">100%</div>
+                        <div class="text-[11px] text-slate-400 font-semibold uppercase">Trazabilidad de Lote</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SIMULADOR INTERACTIVO DEL DASHBOARD AGRONÓMICO -->
+            <div class="mt-16 relative mx-auto max-w-5xl rounded-3xl p-1 bg-gradient-to-b from-slate-700/60 via-slate-800/40 to-slate-900/80 shadow-2xl shadow-emerald-950/40">
+                <div class="bg-slate-950/90 rounded-[22px] p-4 sm:p-6 border border-slate-800 space-y-6">
+                    <!-- Barra de herramientas del simulador -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-rose-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
                             </div>
+                            <span class="text-xs font-mono text-slate-400">
+                                Sede Norte &bull; Sala Épsilon [Floración #3] &bull; 48x LED Samsung LM301H
+                            </span>
+                        </div>
 
-                            <div class="pt-3 sm:pt-5">
-                                <h2
-                                    class="text-xl font-semibold text-black dark:text-white"
-                                >
-                                    Laravel News
-                                </h2>
-
-                                <p class="mt-4 text-sm/relaxed">
-                                    Laravel News is a community driven portal
-                                    and newsletter aggregating all of the latest
-                                    and most important news in the Laravel
-                                    ecosystem, including new package releases
-                                    and tutorials.
-                                </p>
-                            </div>
-
-                            <svg
-                                class="size-6 shrink-0 self-center stroke-[#FF2D20]"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
+                        <!-- Selector de Módulos Demostrativos -->
+                        <div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+                            <button
+                                type="button"
+                                @click="pestanaActiva = 'telemetria'"
+                                :class="pestanaActiva === 'telemetria' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'"
+                                class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                                />
-                            </svg>
-                        </a>
-
-                        <div
-                            class="flex items-start gap-4 rounded-lg bg-white p-6 shadow-[0px_14px_34px_0px_rgba(0,0,0,0.08)] ring-1 ring-white/[0.05] lg:pb-10 dark:bg-zinc-900 dark:ring-zinc-800"
-                        >
-                            <div
-                                class="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#FF2D20]/10 sm:size-16"
+                                Clima & VPD
+                            </button>
+                            <button
+                                type="button"
+                                @click="pestanaActiva = 'riego'"
+                                :class="pestanaActiva === 'riego' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'"
+                                class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                             >
-                                <svg
-                                    class="size-5 sm:size-6"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <g fill="#FF2D20">
-                                        <path
-                                            d="M16.597 12.635a.247.247 0 0 0-.08-.237 2.234 2.234 0 0 1-.769-1.68c.001-.195.03-.39.084-.578a.25.25 0 0 0-.09-.267 8.8 8.8 0 0 0-4.826-1.66.25.25 0 0 0-.268.181 2.5 2.5 0 0 1-2.4 1.824.045.045 0 0 0-.045.037 12.255 12.255 0 0 0-.093 3.86.251.251 0 0 0 .208.214c2.22.366 4.367 1.08 6.362 2.118a.252.252 0 0 0 .32-.079 10.09 10.09 0 0 0 1.597-3.733ZM13.616 17.968a.25.25 0 0 0-.063-.407A19.697 19.697 0 0 0 8.91 15.98a.25.25 0 0 0-.287.325c.151.455.334.898.548 1.328.437.827.981 1.594 1.619 2.28a.249.249 0 0 0 .32.044 29.13 29.13 0 0 0 2.506-1.99ZM6.303 14.105a.25.25 0 0 0 .265-.274 13.048 13.048 0 0 1 .205-4.045.062.062 0 0 0-.022-.07 2.5 2.5 0 0 1-.777-.982.25.25 0 0 0-.271-.149 11 11 0 0 0-5.6 2.815.255.255 0 0 0-.075.163c-.008.135-.02.27-.02.406.002.8.084 1.598.246 2.381a.25.25 0 0 0 .303.193 19.924 19.924 0 0 1 5.746-.438ZM9.228 20.914a.25.25 0 0 0 .1-.393 11.53 11.53 0 0 1-1.5-2.22 12.238 12.238 0 0 1-.91-2.465.248.248 0 0 0-.22-.187 18.876 18.876 0 0 0-5.69.33.249.249 0 0 0-.179.336c.838 2.142 2.272 4 4.132 5.353a.254.254 0 0 0 .15.048c1.41-.01 2.807-.282 4.117-.802ZM18.93 12.957l-.005-.008a.25.25 0 0 0-.268-.082 2.21 2.21 0 0 1-.41.081.25.25 0 0 0-.217.2c-.582 2.66-2.127 5.35-5.75 7.843a.248.248 0 0 0-.09.299.25.25 0 0 0 .065.091 28.703 28.703 0 0 0 2.662 2.12.246.246 0 0 0 .209.037c2.579-.701 4.85-2.242 6.456-4.378a.25.25 0 0 0 .048-.189 13.51 13.51 0 0 0-2.7-6.014ZM5.702 7.058a.254.254 0 0 0 .2-.165A2.488 2.488 0 0 1 7.98 5.245a.093.093 0 0 0 .078-.062 19.734 19.734 0 0 1 3.055-4.74.25.25 0 0 0-.21-.41 12.009 12.009 0 0 0-10.4 8.558.25.25 0 0 0 .373.281 12.912 12.912 0 0 1 4.826-1.814ZM10.773 22.052a.25.25 0 0 0-.28-.046c-.758.356-1.55.635-2.365.833a.25.25 0 0 0-.022.48c1.252.43 2.568.65 3.893.65.1 0 .2 0 .3-.008a.25.25 0 0 0 .147-.444c-.526-.424-1.1-.917-1.673-1.465ZM18.744 8.436a.249.249 0 0 0 .15.228 2.246 2.246 0 0 1 1.352 2.054c0 .337-.08.67-.23.972a.25.25 0 0 0 .042.28l.007.009a15.016 15.016 0 0 1 2.52 4.6.25.25 0 0 0 .37.132.25.25 0 0 0 .096-.114c.623-1.464.944-3.039.945-4.63a12.005 12.005 0 0 0-5.78-10.258.25.25 0 0 0-.373.274c.547 2.109.85 4.274.901 6.453ZM9.61 5.38a.25.25 0 0 0 .08.31c.34.24.616.561.8.935a.25.25 0 0 0 .3.127.631.631 0 0 1 .206-.034c2.054.078 4.036.772 5.69 1.991a.251.251 0 0 0 .267.024c.046-.024.093-.047.141-.067a.25.25 0 0 0 .151-.23A29.98 29.98 0 0 0 15.957.764a.25.25 0 0 0-.16-.164 11.924 11.924 0 0 0-2.21-.518.252.252 0 0 0-.215.076A22.456 22.456 0 0 0 9.61 5.38Z"
-                                        />
-                                    </g>
-                                </svg>
+                                Riego & VWC
+                            </button>
+                            <button
+                                type="button"
+                                @click="pestanaActiva = 'salas'"
+                                :class="pestanaActiva === 'salas' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'"
+                                class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                            >
+                                Arquitectura Sala
+                            </button>
+                            <button
+                                type="button"
+                                @click="pestanaActiva = 'trazabilidad'"
+                                :class="pestanaActiva === 'trazabilidad' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'"
+                                class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                            >
+                                Genéticas & Lotes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Vista 1: Clima & VPD -->
+                    <div v-if="pestanaActiva === 'telemetria'" class="space-y-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Temperatura Sala</span>
+                                <div class="text-2xl font-black text-emerald-400 mt-0.5">24.5 °C</div>
+                                <span class="text-[10px] text-emerald-500 font-mono">Setpoint: 24.0° - 25.0°</span>
                             </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Humedad Relativa</span>
+                                <div class="text-2xl font-black text-blue-400 mt-0.5">48.2 %</div>
+                                <span class="text-[10px] text-blue-400 font-mono">Quest 225 Pints ON</span>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">VPD Transpiración</span>
+                                <div class="text-2xl font-black text-amber-400 mt-0.5">1.28 kPa</div>
+                                <span class="text-[10px] text-amber-400 font-mono">Zona Floración Óptima</span>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Inyección CO₂</span>
+                                <div class="text-2xl font-black text-purple-400 mt-0.5">1,180 ppm</div>
+                                <span class="text-[10px] text-purple-400 font-mono">Electroválvula Activa</span>
+                            </div>
+                        </div>
 
-                            <div class="pt-3 sm:pt-5">
-                                <h2
-                                    class="text-xl font-semibold text-black dark:text-white"
-                                >
-                                    Vibrant Ecosystem
-                                </h2>
-
-                                <p class="mt-4 text-sm/relaxed">
-                                    Laravel's robust library of first-party
-                                    tools and libraries, such as
-                                    <a
-                                        href="https://forge.laravel.com"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white dark:focus-visible:ring-[#FF2D20]"
-                                        >Forge</a
-                                    >,
-                                    <a
-                                        href="https://vapor.laravel.com"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Vapor</a
-                                    >,
-                                    <a
-                                        href="https://nova.laravel.com"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Nova</a
-                                    >,
-                                    <a
-                                        href="https://envoyer.io"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Envoyer</a
-                                    >, and
-                                    <a
-                                        href="https://herd.laravel.com"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Herd</a
-                                    >
-                                    help you take your projects to the next
-                                    level. Pair them with powerful open source
-                                    libraries like
-                                    <a
-                                        href="https://laravel.com/docs/billing"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Cashier</a
-                                    >,
-                                    <a
-                                        href="https://laravel.com/docs/dusk"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Dusk</a
-                                    >,
-                                    <a
-                                        href="https://laravel.com/docs/broadcasting"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Echo</a
-                                    >,
-                                    <a
-                                        href="https://laravel.com/docs/horizon"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Horizon</a
-                                    >,
-                                    <a
-                                        href="https://laravel.com/docs/sanctum"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Sanctum</a
-                                    >,
-                                    <a
-                                        href="https://laravel.com/docs/telescope"
-                                        class="rounded-sm underline hover:text-black focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FF2D20] dark:hover:text-white"
-                                        >Telescope</a
-                                    >, and more.
-                                </p>
+                        <!-- Mini gráfico telemetría simulada -->
+                        <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
+                            <div class="flex items-center justify-between text-xs mb-3">
+                                <span class="font-bold text-slate-300">Comportamiento Microclimático 24 Horas</span>
+                                <span class="text-emerald-400 font-mono text-[11px] flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    En Línea (Frecuencia 30s)
+                                </span>
+                            </div>
+                            <div class="h-28 w-full flex items-end gap-1.5 pt-4 px-2">
+                                <div class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded-t h-[65%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded-t h-[70%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/30 hover:bg-emerald-500/50 rounded-t h-[78%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/40 hover:bg-emerald-500/60 rounded-t h-[82%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/60 hover:bg-emerald-500/80 rounded-t h-[94%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/70 hover:bg-emerald-500/90 rounded-t h-[88%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/60 hover:bg-emerald-500/80 rounded-t h-[84%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/50 hover:bg-emerald-500/70 rounded-t h-[76%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/30 hover:bg-emerald-500/50 rounded-t h-[68%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded-t h-[64%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded-t h-[60%] transition-all"></div>
+                                <div class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 rounded-t h-[58%] transition-all"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-500 pt-2 font-mono">
+                                <span>00:00 (Noche)</span>
+                                <span>06:00 (Encendido LED)</span>
+                                <span>12:00 (Pico Fotosintético)</span>
+                                <span>18:00 (Apagado LED)</span>
+                                <span>23:59</span>
                             </div>
                         </div>
                     </div>
-                </main>
 
-                <footer
-                    class="py-16 text-center text-sm text-black dark:text-white/70"
-                >
-                    Laravel v{{ laravelVersion }} (PHP v{{ phpVersion }})
-                </footer>
+                    <!-- Vista 2: Riego & VWC -->
+                    <div v-if="pestanaActiva === 'riego'" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Humedad Sustrato (VWC)</span>
+                                <div class="text-3xl font-black text-cyan-400 mt-1">58.4 %</div>
+                                <p class="text-xs text-slate-400 mt-1">Sensor Teros 12 en maceta testigo #4</p>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Drenaje & Dryback</span>
+                                <div class="text-3xl font-black text-teal-400 mt-1">16.8 %</div>
+                                <p class="text-xs text-slate-400 mt-1">Dryback nocturno planificado: 18%</p>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">EC Entrada / Drenaje</span>
+                                <div class="text-3xl font-black text-emerald-400 mt-1">2.4 / 2.6</div>
+                                <p class="text-xs text-slate-400 mt-1">pH 6.1 &bull; Solución balanceada</p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-800/40 flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-cyan-300">Estrategia Activa: Riego por Micro-Pulsos P1 + P2</span>
+                                    <p class="text-slate-400 text-[11px]">3 pulsos de 120ml aplicados hoy &bull; Próximo riego automático a las 14:30 hs</p>
+                                </div>
+                            </div>
+                            <span class="font-mono bg-cyan-900/50 text-cyan-300 px-2.5 py-1 rounded-md text-[11px] font-bold">
+                                Automatizado
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Vista 3: Arquitectura Sala -->
+                    <div v-if="pestanaActiva === 'salas'" class="space-y-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-center">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Superficie & Cubaje</span>
+                                <div class="text-xl font-bold text-white mt-1">42.0 m² / 126 m³</div>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-center">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Carga Lumínica</span>
+                                <div class="text-xl font-bold text-amber-400 mt-1">32.6 kW Total</div>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-center">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Deshumidificación</span>
+                                <div class="text-xl font-bold text-blue-400 mt-1">450 Pints/Día</div>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl text-center">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase">Capacidad Macetas</span>
+                                <div class="text-xl font-bold text-emerald-400 mt-1">280 Plantas</div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+                            <span>Equipos asignados: 48x LED SpiderFarmer SE7000, 2x Quest 225, 1x Daikin Inverter 60k BTU, 1x Sensor TrolMaster Hydro-X</span>
+                            <span class="text-emerald-400 font-bold">100% Operativo</span>
+                        </div>
+                    </div>
+
+                    <!-- Vista 4: Genéticas & Lotes -->
+                    <div v-if="pestanaActiva === 'trazabilidad'" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-emerald-400">Gorilla Zkittlez</span>
+                                    <span class="text-[10px] font-mono text-slate-400">LOTE-GZK-03</span>
+                                </div>
+                                <div class="text-lg font-black text-white mt-1">Día 48 de Floración</div>
+                                <div class="text-xs text-slate-400">THC 24% &bull; Cosecha en 12 días</div>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-purple-400">Super Lemon Haze</span>
+                                    <span class="text-[10px] font-mono text-slate-400">LOTE-SLH-01</span>
+                                </div>
+                                <div class="text-lg font-black text-white mt-1">Semana 3 Vegetativo</div>
+                                <div class="text-xs text-slate-400">Sativa 70% &bull; Poda apical lista</div>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-2xl">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-teal-400">Cannatonic CBD</span>
+                                    <span class="text-[10px] font-mono text-slate-400">LOTE-CBD-02</span>
+                                </div>
+                                <div class="text-lg font-black text-white mt-1">Secado Controlado</div>
+                                <div class="text-xs text-slate-400">CBD 18% &bull; 18°C y 60% HR constante</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <!-- SECCIÓN 2: CARACTERÍSTICAS TÉCNICAS (POR QUÉ VENDER CULTIVOOS) -->
+        <section id="salas" class="relative z-10 py-20 bg-slate-950/60 border-y border-slate-800/80">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <span class="text-xs font-extrabold uppercase tracking-widest text-emerald-400">Arquitectura de Misión Crítica</span>
+                    <h2 class="text-3xl sm:text-4xl font-black text-white mt-2">
+                        Construido para cultivadores comerciales e investigadores
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-3">
+                        Elimina conjeturas humanas y sustitúyelas por trazabilidad matemática, algoritmos de VPD y prevención activa de plagas.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Tarjeta 1 -->
+                    <div class="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 p-6 rounded-3xl transition-all hover:shadow-xl hover:shadow-emerald-950/20 group">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
+                            Modelado de Salas & Balance Térmico
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            Cálculo dinámico de m³ de volumen de aire, disipación de calor por luminarias en Watts/kW y capacidad de extracción de agua por deshumidificadores comerciales en función de la etapa fenológica.
+                        </p>
+                    </div>
+
+                    <!-- Tarjeta 2 -->
+                    <div class="bg-slate-900/90 border border-slate-800 hover:border-teal-500/40 p-6 rounded-3xl transition-all hover:shadow-xl hover:shadow-teal-950/20 group">
+                        <div class="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-teal-400 transition-colors">
+                            Gestión Hídrica de Precisión
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            Configura curvas de secado (dryback), micro-pulsos de fertirriego, monitoreo de salinidad (EC) y acidez (pH) tanto para sustratos (coco/tierra) como hidroponía recirculante RDWC o aeroponía.
+                        </p>
+                    </div>
+
+                    <!-- Tarjeta 3 -->
+                    <div class="bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 p-6 rounded-3xl transition-all hover:shadow-xl hover:shadow-cyan-950/20 group">
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">
+                            Multi-Tenancy & Roles Operativos
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                            Aislamiento estricto de bases de datos por Organización. Permite gestionar múltiples granjas o clubes cannábicos con accesos diferenciados para Directores Técnicos, Agrónomos y Operadores.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: RENTABILIDAD & RETORNO DE INVERSIÓN (ROI) -->
+        <section id="roi" class="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border border-emerald-500/30 rounded-3xl p-8 sm:p-12">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    <div class="lg:col-span-7 space-y-4">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Calculadora de Retorno</span>
+                        <h2 class="text-3xl sm:text-4xl font-black text-white">
+                            ¿Cuánto dinero pierde tu sala por oscilaciones de VPD no detectadas?
+                        </h2>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            Un desfase de solo 0.3 kPa durante floración inhibe el intercambio de CO₂, reduce la densidad de los cogollos en hasta un 15% y dispara el riesgo de hongos patógenos. CultivoOS amortiza su costo desde la primera cosecha.
+                        </p>
+                        <div class="pt-4 flex flex-wrap gap-4 text-xs">
+                            <div class="flex items-center gap-2 text-slate-300">
+                                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span>Exportación de bitácoras para auditoría GMP</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-300">
+                                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span>Alertas tempranas vía Telegram / Webhooks</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-300">
+                                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span>Historial permanente sin pérdida de telemetría</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 bg-slate-900/90 border border-slate-800 p-6 rounded-2xl space-y-4">
+                        <h4 class="text-sm font-extrabold text-white">Compara el Método Tradicional vs CultivoOS</h4>
+                        <div class="space-y-3 text-xs">
+                            <div class="p-3 rounded-xl bg-rose-950/20 border border-rose-900/30 text-rose-300 flex items-start gap-2.5">
+                                <span class="text-rose-500 font-bold">✕</span>
+                                <div>
+                                    <span class="font-bold">Método Convencional:</span>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Planillas de papel, registros a destiempo, riegos a ojo y sin trazabilidad de pérdidas de fertilizante.</p>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 flex items-start gap-2.5">
+                                <span class="text-emerald-400 font-bold">✓</span>
+                                <div>
+                                    <span class="font-bold">Con CultivoOS:</span>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Automatización estricta de tareas, sensorica en tiempo real, alarmas predictivas y consistencia fenotípica en cada lote.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 4: PREGUNTAS FRECUENTES (FAQ AGRONÓMICO) -->
+        <section class="py-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10">
+                <h3 class="text-2xl font-black text-white">Preguntas Frecuentes de Cultivadores Comerciales</h3>
+                <p class="text-xs text-slate-400 mt-1">Todo lo que necesitas saber para desplegar CultivoOS en tus instalaciones.</p>
+            </div>
+
+            <div class="space-y-3">
+                <div class="border border-slate-800 rounded-2xl bg-slate-900/60 overflow-hidden">
+                    <button
+                        type="button"
+                        @click="toggleFaq(1)"
+                        class="w-full text-left p-4 flex items-center justify-between text-sm font-bold text-slate-200 hover:text-white cursor-pointer"
+                    >
+                        <span>¿Es compatible con mis sensores y equipos existentes (TrolMaster, Quest, Daikin, etc.)?</span>
+                        <span class="text-emerald-400 font-mono">{{ faqAbierto === 1 ? '−' : '+' }}</span>
+                    </button>
+                    <div v-show="faqAbierto === 1" class="px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/80 pt-3 leading-relaxed">
+                        Sí. CultivoOS cuenta con un módulo de arquitectura de salas donde puedes registrar y tipificar cualquier equipo comercial por potencia en kW, amperaje y capacidad volumétrica, además de conectarse a controladores IoT y microcontroladores ESP32/MQTT.
+                    </div>
+                </div>
+
+                <div class="border border-slate-800 rounded-2xl bg-slate-900/60 overflow-hidden">
+                    <button
+                        type="button"
+                        @click="toggleFaq(2)"
+                        class="w-full text-left p-4 flex items-center justify-between text-sm font-bold text-slate-200 hover:text-white cursor-pointer"
+                    >
+                        <span>¿Puedo gestionar múltiples salas y sedes en la misma cuenta?</span>
+                        <span class="text-emerald-400 font-mono">{{ faqAbierto === 2 ? '−' : '+' }}</span>
+                    </button>
+                    <div v-show="faqAbierto === 2" class="px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/80 pt-3 leading-relaxed">
+                        Absolutamente. CultivoOS está diseñado con arquitectura Multi-Tenancy estricta. Puedes crear distintas Organizaciones (ej: Sede Producción Interior, Sede R&D Genética, Club Cannábico) con salas, cultivos y personal asignado de forma totalmente aislada.
+                    </div>
+                </div>
+
+                <div class="border border-slate-800 rounded-2xl bg-slate-900/60 overflow-hidden">
+                    <button
+                        type="button"
+                        @click="toggleFaq(3)"
+                        class="w-full text-left p-4 flex items-center justify-between text-sm font-bold text-slate-200 hover:text-white cursor-pointer"
+                    >
+                        <span>¿Soporta cultivo en sustrato inerte e hidroponía RDWC?</span>
+                        <span class="text-emerald-400 font-mono">{{ faqAbierto === 3 ? '−' : '+' }}</span>
+                    </button>
+                    <div v-show="faqAbierto === 3" class="px-4 pb-4 text-xs text-slate-400 border-t border-slate-800/80 pt-3 leading-relaxed">
+                        El módulo de Gestión Hídrica adapta automáticamente sus cálculos según el medio seleccionado: curvas de VWC y dryback para turba/coco o balance de reservorios de recirculación continua (RDWC, NFT, DWC) con rangos de temperatura de solución radicular y oxígeno disuelto.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 5: CTA FINAL DE CONVERSIÓN -->
+        <section class="py-20 text-center relative z-10 px-4">
+            <div class="max-w-3xl mx-auto space-y-6">
+                <h2 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                    Eleva tu instalación al nivel de ingeniería agronómica.
+                </h2>
+                <p class="text-sm text-slate-300 max-w-xl mx-auto">
+                    Únete a los equipos de cultivo que ya transformaron sus resultados con telemetría en tiempo real y toma de decisiones basada en datos.
+                </p>
+                <div class="pt-2">
+                    <Link
+                        v-if="canRegister"
+                        :href="route('register')"
+                        class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-sm font-black px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/25 hover:scale-105 transition-all cursor-pointer"
+                    >
+                        <span>Iniciar en CultivoOS Hoy Mismo</span>
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </Link>
+                </div>
+            </div>
+        </section>
+
+        <!-- PIE DE PÁGINA (FOOTER) -->
+        <footer class="border-t border-slate-800/80 py-10 px-4 sm:px-6 lg:px-8 text-xs text-slate-500 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-slate-400">cultivo<span class="text-emerald-400">OS</span></span>
+                <span>&bull; &copy; 2026 CultivoOS Core Platform</span>
+            </div>
+
+            <div class="flex items-center gap-4 text-[11px]">
+                <span class="flex items-center gap-1.5 text-emerald-400 font-mono">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    API IoT Activa
+                </span>
+                <span class="font-mono text-slate-500">
+                    Laravel v{{ laravelVersion }} (PHP v{{ phpVersion }})
+                </span>
+            </div>
+        </footer>
     </div>
 </template>

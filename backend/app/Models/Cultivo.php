@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Cultivo extends Model
 {
     use HasFactory, HasUuids;
@@ -54,5 +56,25 @@ class Cultivo extends Model
     public function timeLines()
 {
     return $this->hasMany(TimeLine::class);
+}
+public function cultivoVariedades(): HasMany
+{
+    return $this->hasMany(
+        CultivoVariedad::class,
+
+    );
+}
+public function equipamientos(): BelongsToMany
+{
+    return $this->belongsToMany(
+        Equipamiento::class,
+        'cultivo_equipamientos',
+        'cultivo_id',
+        'equipamiento_id'
+    )->withPivot([
+        'fecha_inicio',
+        'fecha_fin',
+        'notas',
+    ]);
 }
 }

@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Equipamiento extends Model
 {
    /**
@@ -26,7 +27,8 @@ class Equipamiento extends Model
         'estado',
         'calibrado',
         'fecha_ultima_calibracion',
-        'notas'
+        'notas',
+        'cultivo_id',
     ];
 
     protected $casts = [
@@ -45,23 +47,27 @@ class Equipamiento extends Model
         return $this->belongsTo(TipoEquipamiento::class, 'tipo_equipamiento_id');
     }
 
-    public function cultivos(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            Cultivo::class,
-            'cultivo_equipamientos'
-        )->withPivot([
-            'id',
-            'fecha_inicio',
-            'fecha_fin',
-            'notas'
-        ])->withTimestamps();
-    }
+
 
     public function asignaciones(): HasMany
     {
         return $this->hasMany(CultivoEquipamiento::class, 'equipamiento_id');
     }
+
+
+public function cultivos(): BelongsToMany
+{
+    return $this->belongsToMany(
+        Cultivo::class,
+        'cultivo_equipamientos',
+        'equipamiento_id',
+        'cultivo_id'
+    )->withPivot([
+        'fecha_inicio',
+        'fecha_fin',
+        'notas',
+    ]);
+}
 }
 
 

@@ -6,71 +6,100 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\TipoSala;
 use App\Models\EstadoSala;
+use App\Models\Equipamiento;
+use App\Models\Organizacion;
 
+use IlluminateHttpRequest;
+use IlluminateSupportFacadesDB;
+use InertiaInertia;
+use InertiaResponse;
 
 class SalasController extends Controller
 {
-    
-    public function create()
-{
-    return Inertia::render('Salas/Create', [
-        'tiposSala' => TipoSala::orderBy('nombre')->get(),
-        'estadosSala' => EstadoSala::orderBy('nombre')->get(),
-    ]);
-}
-    public function creates()
-{
-    return Inertia::render('Salas/Creates', [
-        'tiposSala' => TipoSala::orderBy('nombre')->get(),
-        'estadosSala' => EstadoSala::orderBy('nombre')->get(),
-    ]);
-}
+    /**
+     * Muestra el formulario para crear una nueva sala climatizada con equipamiento técnico.
+     */
+    public function create(Request $request): Response
+    {
+        $organizaciones = Organizacion::select('id', 'nombre')->get();
+        $tiposSala = TipoSala::select('id', 'nombre', 'codigo')->get();
+        $tiposEquipamiento = TipoEquipamiento::select('id', 'nombre', 'codigo')->get();
 
+        return Inertia::render('Salas/Create', [
+            'organizaciones' => $organizaciones,
+            'tiposSala' => $tiposSala,
+            'tiposEquipamiento' => $tiposEquipamiento,
+            'organizacionActivaId' => $organizaciones->first()?->id,
+        ]);
+    }
 
-    public function show()
-{
-    return Inertia::render('Salas/Creates', [
-        'tiposSala' => TipoSala::orderBy('nombre')->get(),
-        'estadosSala' => EstadoSala::orderBy('nombre')->get(),
-    ]);
-}
-
-
-
-    //return Inertia::render('Organizaciones/Create');
+    /**
+     * Guarda la sala y registra transaccionalmente todos sus equipamientos asociados.
+     */
     public function store(Request $request)
-{
-    $datos = $request->validate([
-        'nombre' => ['required', 'string', 'max:100'],
-        'descripcion' => ['nullable', 'string'],
+    {
+        $validated = $request->validate([
+            'organizacion_id' => 'required|uuid|exists:organizacions,id',
+            'nombre' => 'required|string|max:120',
+            'codigo' => 'required|string|max:40|unique:salas,codigo',
+            'tipo_sala_id' => 'nullable|uuid|exists:tipo_salas,id',
+            'estado' => 'required|string|in:ACTIVA,MANTENIMIENTO,INACTIVA',
+            'area_m2' => 'required|numeric|min:0.5',
+            'altura_m' => 'required|numeric|min:0.5',
+            'capacidad_macetas' => 'nullable|integer|min:0',
+            'posee_co2' => 'boolean',
+            'posee_extraccion' => 'boolean',
+            'posee_intraccion' => 'boolean',
+            'posee_ins_agua' => 'boolean',
+            'descripcion' => 'nullable|string',
+            'equipamientos' => 'nullable|array',
+            'equipamientos.*.nombre' => 'required|string|max:120',
+            'equipamientos.*.codigo_inventario' => 'nullable|string|max:60',
+            'equipamientos.*.tipo' => 'required|string',
+            'equipamientos.*.marca' => 'nullable|string|max:60',
+            'equipamientos.*.modelo' => 'nullable|string|max:60',
+            'equipamientos.*.potencia_w' => 'nullable|numeric|min:0',
+            'equipamientos.*.especificaciones' => 'nullable|array',
+        ]);
 
-        'posee_co2' => ['required', 'boolean'],
-        'posee_extraccion' => ['required', 'boolean'],
-        'posee_intraccion' => ['required', 'boolean'],
-        'posee_ins_agua' => ['required', 'boolean'],
+        DB::transaction(function () use ($validated) {
+            // 1. Crear Sala
+            $sala = Sala::create([
+                'organizacion_id' => $validated['organizacion_id'],
+                'nombre' => $validated['nombre'],
+                'codigo' => $validated['codigo'],
+                'tipo_sala_id' => $validated['tipo_sala_id'] ?? null,
+                'area' => $validated['area_m2'],
+                'altura' => $validated['altura_m'],
+                'volumen' => round($validated['area_m2'] * $validated['altura_m'], 2),
+                'posee_co2' => $validated['posee_co2'] ?? true,
+                'posee_extraccion' => $validated['posee_extraccion'] ?? true,
+                'posee_intraccion' => $validated['posee_intraccion'] ?? true,
+                'posee_ins_agua' => $validated['posee_ins_agua'] ?? true,
+                'descripcion' => $validated['descripcion'] ?? null,
+            ]);
 
-        'tipo_sala_id' => [
-            'required',
-            'uuid',
-            'exists:tipo_salas,id',
-        ],
+            // 2. Registrar Equipamientos vinculados
+            if (!empty($validated['equipamientos'])) {
+                foreach ($validated['equipamientos'] as $eqData) {
+                    $tipoEq = TipoEquipamiento::where('codigo', $eqData['tipo'])->first();
 
-        'estado_sala_id' => [
-            'required',
-            'uuid',
-            'exists:estado_salas,id',
-        ],
+                    Equipamiento::create([
+                        'sala_id' => $sala->id,
+                        'tipo_equipamiento_id' => $tipoEq?->id,
+                        'nombre' => $eqData['nombre'],
+                        'codigo_inventario' => $eqData['codigo_inventario'] ?? ('EQ-' . strtoupper(uniqid())),
+                        'marca' => $eqData['marca'] ?? null,
+                        'modelo' => $eqData['modelo'] ?? null,
+                        'potencia_w' => $eqData['potencia_w'] ?? 0,
+                        'especificaciones' => $eqData['especificaciones'] ?? [],
+                        'estado' => 'OPERATIVO',
+                        'calibrado' => true,
+                    ]);
+                }
+            }
+        });
 
-        'area' => ['required', 'numeric', 'min:0'],
-        'altura' => ['required', 'numeric', 'min:0'],
-        'volumen' => ['required', 'numeric', 'min:0'],
-    ]);
-
-    $datos['organizacion_id'] = session('organizacion_id');
-
-    $sala = Sala::create($datos);
-
-    return redirect()->route('salas.show', $sala);
-
-}
+        return redirect()->route('dashboard1.index')->with('success', 'Sala climatizada y equipamiento creados con éxito.');
+    }
 }

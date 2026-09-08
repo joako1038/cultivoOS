@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class CultivoVariedad extends Model
 {
     use HasFactory, HasUuids;
@@ -13,7 +16,8 @@ class CultivoVariedad extends Model
         'descripcion',
         'cantidad_plantas',
         'fecha_inicio',
-        'catalogo_variedad_id'
+        'catalogo_variedad_id',
+        'cultivo_id',
     ];
 
     protected $casts = [
@@ -30,5 +34,20 @@ class CultivoVariedad extends Model
     {
         return $this->hasMany(Planta::class);
     }
+        public function cultivo(): BelongsTo
+    {
+        return $this->belongsTo(
+            Cultivo::class,
+            'cultivo_id'
+        );
+    }
+     public function catalogoVariedad(): BelongsTo
+    {
+        return $this->belongsTo(
+            CatalogoVariedad::class,
+            'catalogo_variedad_id'
+        );
+    }
+
     
 }
